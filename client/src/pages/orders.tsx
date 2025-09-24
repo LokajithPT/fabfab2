@@ -1,0 +1,739 @@
+import { useState, useEffect } from "react";
+import {
+  Eye,
+  Edit,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  PlusCircle,
+  RefreshCw,
+  Search,
+  Filter,
+  Download,
+  Calendar,
+  Phone,
+  IndianRupee,
+  Package,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useLocation } from "wouter";
+
+// Enhanced admin fetch with better error handling
+const adminFetch = async (url: string, options: RequestInit = {}) => {
+  try {
+    const token = localStorage.getItem("token"); // grab the auth token
+
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    return res.json();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("Network error. Please check your connection.");
+    }
+    throw error;
+  }
+};
+
+interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  service: string;
+  serviceId: string;
+  specialInstructions: string;
+  pickupDate: string;
+  total: number;
+  status?: "Pending" | "Processing" | "Completed" | "Cancelled";
+  createdAt?: string;
+}
+
+type SortField = keyof Order;
+
+export default function OrdersTable() {
+  // State management
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Modals
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<Order>>({});
+
+  const { toast } = useToast();
+  const [location, setLocation] = useLocation();
+
+  // Fetch orders with loading state
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const data: Order[] = await adminFetch("/admin/api/orders");
+      setOrders(data);
+      setFilteredOrders(data);
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+      toast({
+        title: "Error",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  // Enhanced filtering and sorting
+  useEffect(() => {
+    let tempOrders = [...orders];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      tempOrders = tempOrders.filter(
+        (order) =>
+          order.id.toLowerCase().includes(query) ||
+          order.customerName.toLowerCase().includes(query) ||
+          order.customerPhone.includes(query) ||
+          order.service.toLowerCase().includes(query) ||
+          (order.specialInstructions &&
+            order.specialInstructions.toLowerCase().includes(query)),
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      tempOrders = tempOrders.filter((order) => order.status === statusFilter);
+    }
+
+    // Apply sorting
+    if (sortField) {
+      tempOrders.sort((a, b) => {
+        const aVal = a[sortField];
+        const bVal = b[sortField];
+
+        if (aVal === undefined || bVal === undefined) return 0;
+
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          return sortDirection === "asc"
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        }
+
+        if (typeof aVal === "number" && typeof bVal === "number") {
+          return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+        }
+
+        return 0;
+      });
+    }
+
+    setFilteredOrders(tempOrders);
+  }, [orders, searchQuery, statusFilter, sortField, sortDirection]);
+
+  // Enhanced sort handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Action handlers
+  const handleRefresh = async () => {
+    await fetchOrders();
+    toast({
+      title: "Success",
+      description: "Orders refreshed successfully",
+    });
+  };
+
+  const handleView = (order: Order) => {
+    setViewOrder(order);
+  };
+
+  const handleEdit = (order: Order) => {
+    setOrderToEdit(order);
+    setEditFormData({
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      service: order.service,
+      specialInstructions: order.specialInstructions,
+      pickupDate: order.pickupDate ? order.pickupDate.split("T")[0] : "",
+      total: order.total,
+      status: order.status || "Pending",
+    });
+  };
+
+  const handleDelete = (order: Order) => {
+    setOrderToDelete(order);
+  };
+
+  const confirmEdit = async () => {
+    if (!orderToEdit || !editFormData) return;
+
+    setLoading(true);
+    try {
+      await adminFetch(`/admin/api/orders/${orderToEdit.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editFormData),
+      });
+
+      const updatedOrder = { ...orderToEdit, ...editFormData } as Order;
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderToEdit.id ? updatedOrder : o)),
+      );
+
+      toast({
+        title: "Success",
+        description: `Order ${orderToEdit.id} updated successfully`,
+      });
+
+      setOrderToEdit(null);
+      setEditFormData({});
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!orderToDelete) return;
+
+    setLoading(true);
+    try {
+      await adminFetch(`/admin/api/orders/${orderToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
+
+      toast({
+        title: "Success",
+        description: `Order ${orderToDelete.id} deleted successfully`,
+      });
+
+      setOrderToDelete(null);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: Order["status"]) => {
+    const variants = {
+      Pending: "bg-amber-100 text-amber-800 border-amber-200",
+      Processing: "bg-blue-100 text-blue-800 border-blue-200",
+      Completed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      Cancelled: "bg-red-100 text-red-800 border-red-200",
+    };
+
+    return (
+      <Badge className={`${variants[status || "Pending"]} font-medium`}>
+        {status || "Pending"}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "Not set";
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Orders Management
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Manage and track all customer orders ({filteredOrders.length} total)
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <Button onClick={() => setLocation("/create-order")} size="sm">
+            <PlusCircle className="h-4 w-4 mr-2" />
+            New Order
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search orders, customers, services..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Processing">Processing</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table Section */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  {[
+                    { key: "id", label: "Order ID", icon: Package },
+                    { key: "customerName", label: "Customer", icon: null },
+                    { key: "service", label: "Service", icon: null },
+                    { key: "pickupDate", label: "Pickup Date", icon: Calendar },
+                    { key: "total", label: "Total", icon: IndianRupee },
+                  ].map(({ key, label, icon: Icon }) => (
+                    <TableHead
+                      key={key}
+                      className="cursor-pointer hover:bg-gray-100 transition-colors font-semibold"
+                      onClick={() => handleSort(key as SortField)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {Icon && <Icon className="h-4 w-4" />}
+                        {label}
+                        {sortField === key &&
+                          (sortDirection === "asc" ? (
+                            <ArrowUp className="h-3 w-3 text-blue-600" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3 text-blue-600" />
+                          ))}
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-500">Loading orders...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredOrders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-gray-500 font-medium">
+                        No orders found
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        {searchQuery || statusFilter !== "all"
+                          ? "Try adjusting your filters"
+                          : "Create your first order to get started"}
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <TableRow
+                      key={order.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <TableCell className="font-mono text-sm font-medium text-blue-600">
+                        #{order.id}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium">{order.customerName}</p>
+                          <p className="text-sm text-gray-500 flex items-center">
+                            <Phone className="h-3 w-3 mr-1" />
+                            {order.customerPhone}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {order.service}
+                      </TableCell>
+                      <TableCell>{formatDate(order.pickupDate)}</TableCell>
+                      <TableCell className="font-semibold text-green-600">
+                        {formatCurrency(order.total)}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleView(order)}
+                            className="h-8 w-8 p-0 hover:bg-blue-100"
+                          >
+                            <Eye className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(order)}
+                            className="h-8 w-8 p-0 hover:bg-green-100"
+                          >
+                            <Edit className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(order)}
+                            className="h-8 w-8 p-0 hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* View Order Modal */}
+      <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Order Details - #{viewOrder?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {viewOrder && (
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Customer
+                  </label>
+                  <p className="font-semibold">{viewOrder.customerName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Phone
+                  </label>
+                  <p>{viewOrder.customerPhone}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Service
+                  </label>
+                  <p>{viewOrder.service}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Pickup Date
+                  </label>
+                  <p>{formatDate(viewOrder.pickupDate)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Total Amount
+                  </label>
+                  <p className="font-semibold text-green-600">
+                    {formatCurrency(viewOrder.total)}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Status
+                  </label>
+                  <div className="mt-1">{getStatusBadge(viewOrder.status)}</div>
+                </div>
+              </div>
+              {viewOrder.specialInstructions && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-500">
+                    Special Instructions
+                  </label>
+                  <p className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
+                    {viewOrder.specialInstructions}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Order Modal */}
+      <Dialog open={!!orderToEdit} onOpenChange={() => setOrderToEdit(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit Order - #{orderToEdit?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {orderToEdit && (
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Customer Name</label>
+                  <Input
+                    value={editFormData.customerName || ""}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        customerName: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Phone</label>
+                  <Input
+                    value={editFormData.customerPhone || ""}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        customerPhone: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Service</label>
+                  <Input
+                    value={editFormData.service || ""}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        service: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Pickup Date</label>
+                  <Input
+                    type="date"
+                    value={editFormData.pickupDate || ""}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        pickupDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Total Amount</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editFormData.total || ""}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        total: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={editFormData.status || "Pending"}
+                    onValueChange={(value) =>
+                      setEditFormData((prev) => ({
+                        ...prev,
+                        status: value as Order["status"],
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Processing">Processing</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium">
+                  Special Instructions
+                </label>
+                <Textarea
+                  placeholder="Enter any special instructions..."
+                  value={editFormData.specialInstructions || ""}
+                  onChange={(e) =>
+                    setEditFormData((prev) => ({
+                      ...prev,
+                      specialInstructions: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderToEdit(null)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmEdit} disabled={loading}>
+              {loading ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={!!orderToDelete}
+        onOpenChange={() => setOrderToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">
+              Are you sure you want to delete order{" "}
+              <strong>#{orderToDelete?.id}</strong>?
+            </p>
+            <p className="text-sm text-red-600 mt-2">
+              This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={loading}
+            >
+              {loading ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
