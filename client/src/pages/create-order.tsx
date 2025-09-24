@@ -62,7 +62,7 @@ export default function CreateOrder() {
 
     try {
       const newOrder = await authFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
-      setCreatedOrderId(newOrder.id);
+      setCreatedOrderId(newOrder.order.id);
       setIsModalOpen(true);
       queryClient.invalidateQueries(["/api/orders"]);
 
