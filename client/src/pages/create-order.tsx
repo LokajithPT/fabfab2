@@ -138,22 +138,9 @@ export default function CreateOrder() {
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Order Created!</DialogTitle></DialogHeader>
-          <div className="py-4">
-            <p className="text-lg font-semibold mb-2">Order ID: <span className="text-primary">{createdOrderId}</span></p>
-            <Button
-              onClick={() => {
-                if (createdOrderId) {
-                  navigator.clipboard.writeText(createdOrderId);
-                  toast({ title: "Copied!", description: "Order ID copied to clipboard." });
-                }
-              }}
-              variant="outline"
-              size="sm"
-              className="mr-2"
-            >
-              Copy ID
-            </Button>
+          <DialogHeader><DialogTitle className="font-display font-bold text-3xl text-foreground text-center">Order Created Successfully!</DialogTitle></DialogHeader>
+          <div className="py-4 text-center">
+            <p className="text-muted-foreground mb-4">Your order has been placed and is being processed.</p>
             <Button onClick={() => setIsModalOpen(false)} className="mt-4">Close</Button>
           </div>
         </DialogContent>
