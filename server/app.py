@@ -168,8 +168,8 @@ class Order(db.Model):
             "customerName": self.customer_name,
             "customerEmail": self.customer_email,   # NEW
             "customerPhone": self.customer_phone,
-            "serviceId": self.service_id,
-            "service": self.service_name,
+            "serviceId": self.service_id.split(",") if self.service_id else [],
+            "service": self.service_name.split(",") if self.service_name else [],
             "pickupDate": self.pickup_date,
             "specialInstructions": self.special_instructions,
             "total": self.total,
@@ -248,9 +248,12 @@ def customer_login():
 @app.route("/api/orders", methods=["POST"])
 def create_order_auto_customer():
     data = request.json or {}
-    required_fields = ["customerName", "customerPhone", "customerEmail", "serviceId", "total"]
+    required_fields = ["customerName", "customerPhone", "customerEmail", "serviceIds", "total"]
     if not all(field in data and data[field] for field in required_fields):
         return jsonify({"error": "Missing fields"}), 400
+
+    if not isinstance(data["serviceIds"], list) or not data["serviceIds"]:
+        return jsonify({"error": "serviceIds must be a non-empty list"}), 400
 
     # 1️⃣ Check if customer exists, create if not
     customer = Customer.query.filter_by(email=data["customerEmail"]).first()
@@ -265,21 +268,24 @@ def create_order_auto_customer():
         db.session.commit()
 
     # 2️⃣ Create the order
-    service = Service.query.get(data["serviceId"])
-    if not service:
-        return jsonify({"error": "Invalid service"}), 400
+    services = Service.query.filter(Service.id.in_(data["serviceIds"])).all()
+    if not services or len(services) != len(data["serviceIds"]):
+        return jsonify({"error": "One or more services are invalid"}), 400
 
-    service.usage_count += 1
+    total_calculated = sum(s.price for s in services)
+
+    for service in services:
+        service.usage_count += 1
 
     order = Order(
         customer_name=data["customerName"],
         customer_email=data["customerEmail"],
         customer_phone=data["customerPhone"],
-        service_id=service.id,
-        service_name=service.name,
+        service_id=",".join([s.id for s in services]),
+        service_name=",".join([s.name for s in services]),
         pickup_date=data.get("pickupDate", ""),
         special_instructions=data.get("specialInstructions", ""),
-        total=float(data["total"]),
+        total=total_calculated,
     )
     db.session.add(order)
     db.session.commit()
@@ -461,21 +467,18 @@ def update_order_admin(order_id):
         order.customer_name = data["customerName"]
     if "customerEmail" in data:
         order.customer_email = data["customerEmail"]
-    if "customerPhone" in data:
-        order.customer_phone = data["customerPhone"]
-    if "pickupDate" in data:
-        order.pickup_date = data["pickupDate"]
-    if "specialInstructions" in data:
-        order.special_instructions = data["specialInstructions"]
-    if "total" in data:
-        order.total = float(data["total"])
     if "serviceId" in data:
-        service = Service.query.get(data["serviceId"])
-        if not service:
-            return jsonify({"error": "Invalid service"}), 400
-        order.service_id = service.id
-        order.service_name = service.name
-        service.usage_count += 1
+        service_ids = [s.strip() for s in data["serviceId"].split(",")]
+        services = Service.query.filter(Service.id.in_(service_ids)).all()
+        if not services or len(services) != len(service_ids):
+            return jsonify({"error": "One or more services are invalid"}), 400
+
+        order.service_id = ",".join([s.id for s in services])
+        order.service_name = ",".join([s.name for s in services])
+        order.total = sum(s.price for s in services)
+
+        for service in services:
+            service.usage_count += 1
 
     db.session.commit()
     return jsonify(order.to_dict()), 200

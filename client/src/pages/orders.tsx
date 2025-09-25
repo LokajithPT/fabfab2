@@ -77,8 +77,8 @@ interface Order {
   id: string;
   customerName: string;
   customerPhone: string;
-  service: string;
-  serviceId: string;
+  service: string[];
+  serviceId: string[];
   specialInstructions: string;
   pickupDate: string;
   total: number;
@@ -206,7 +206,7 @@ export default function OrdersTable() {
     setEditFormData({
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      service: order.service,
+      service: order.service.join(', '),
       specialInstructions: order.specialInstructions,
       pickupDate: order.pickupDate ? order.pickupDate.split("T")[0] : "",
       total: order.total,
@@ -223,9 +223,14 @@ export default function OrdersTable() {
 
     setLoading(true);
     try {
+      const payload = {
+        ...editFormData,
+        serviceId: editFormData.service, // Send as comma-separated string
+      };
+
       await adminFetch(`/admin/api/orders/${orderToEdit.id}`, {
         method: "PUT",
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(payload),
       });
 
       const updatedOrder = { ...orderToEdit, ...editFormData } as Order;
@@ -449,7 +454,7 @@ export default function OrdersTable() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {order.service}
+                        {order.service.join(', ')}
                       </TableCell>
                       <TableCell>{formatDate(order.pickupDate)}</TableCell>
                       <TableCell className="font-semibold text-green-600">
@@ -521,7 +526,7 @@ export default function OrdersTable() {
                   <label className="text-sm font-medium text-gray-500">
                     Service
                   </label>
-                  <p>{viewOrder.service}</p>
+                  <p>{viewOrder.service.join(', ')}</p>
                 </div>
               </div>
               <div className="space-y-3">
