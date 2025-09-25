@@ -19,6 +19,9 @@ import {
   Calendar,
   MapPin,
   Activity,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -126,8 +129,10 @@ export default function Customers() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const { toast } = useToast();
 
   // -------------- FILTERED CUSTOMERS -------------- //
@@ -167,6 +172,216 @@ export default function Customers() {
 
     return { total, active, inactive, totalSpent };
   }, [customers]);
+
+  // -------------- EXPORT FUNCTIONS -------------- //
+  const exportToCSV = () => {
+    setExportLoading(true);
+
+    try {
+      const headers = [
+        "Customer ID",
+        "Name",
+        "Email",
+        "Phone",
+        "Status",
+        "Total Orders",
+        "Total Spent",
+        "Last Order Date",
+        "Created At",
+        "Address",
+        "Notes",
+      ];
+
+      const csvContent = [
+        headers.join(","),
+        ...filteredCustomers.map((customer) =>
+          [
+            `"${customer.id}"`,
+            `"${customer.name}"`,
+            `"${customer.email}"`,
+            `"${customer.phone}"`,
+            `"${customer.status || "active"}"`,
+            `"${customer.totalOrders || 0}"`,
+            `"${customer.totalSpent || 0}"`,
+            `"${formatDate(customer.lastOrderDate || "")}"`,
+            `"${formatDate(customer.createdAt || "")}"`,
+            `"${(customer.address || "").replace(/"/g, '""')}"`,
+            `"${(customer.notes || "").replace(/"/g, '""')}"`,
+          ].join(","),
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `customers_${new Date().toISOString().split("T")[0]}.csv`,
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Success",
+        description: `Exported ${filteredCustomers.length} customers to CSV`,
+      });
+      setShowExportDialog(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export CSV",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const exportToPDF = () => {
+    setExportLoading(true);
+
+    try {
+      // Create a simple HTML content for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Customer Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+            .summary { margin-bottom: 20px; background-color: #f5f5f5; padding: 15px; border-radius: 5px; }
+            .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+            .stat-card { background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e5e5; }
+            .stat-number { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+            .stat-label { font-size: 14px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .status { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+            .status-active { background-color: #d1fae5; color: #065f46; }
+            .status-inactive { background-color: #f3f4f6; color: #374151; }
+            .status-blocked { background-color: #fee2e2; color: #991b1b; }
+            .amount { font-weight: bold; color: #059669; }
+            .orders { font-weight: bold; color: #2563eb; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Customer Report</h1>
+            <p>Generated on ${new Date().toLocaleDateString("en-IN", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}</p>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number">${customerStats.total}</div>
+              <div class="stat-label">Total Customers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" style="color: #059669;">${customerStats.active}</div>
+              <div class="stat-label">Active Customers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" style="color: #2563eb;">₹${customerStats.totalSpent.toLocaleString("en-IN")}</div>
+              <div class="stat-label">Total Revenue</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" style="color: #7c3aed;">₹${(customerStats.total > 0 ? customerStats.totalSpent / customerStats.total : 0).toLocaleString("en-IN")}</div>
+              <div class="stat-label">Avg. Customer Value</div>
+            </div>
+          </div>
+
+          <div class="summary">
+            <h3>Summary</h3>
+            <p><strong>Total Customers:</strong> ${filteredCustomers.length}</p>
+            <p><strong>Status Breakdown:</strong></p>
+            <ul>
+              <li>Active: ${filteredCustomers.filter((c) => (c.status || "active") === "active").length}</li>
+              <li>Inactive: ${filteredCustomers.filter((c) => c.status === "inactive").length}</li>
+              <li>Blocked: ${filteredCustomers.filter((c) => c.status === "blocked").length}</li>
+            </ul>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Orders</th>
+                <th>Total Spent</th>
+                <th>Last Order</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredCustomers
+                .map(
+                  (customer) => `
+                <tr>
+                  <td>${customer.id}</td>
+                  <td>${customer.name}</td>
+                  <td>${customer.email}</td>
+                  <td>${customer.phone}</td>
+                  <td class="orders">${customer.totalOrders || 0}</td>
+                  <td class="amount">₹${(customer.totalSpent || 0).toLocaleString("en-IN")}</td>
+                  <td>${formatDate(customer.lastOrderDate || "")}</td>
+                  <td>
+                    <span class="status status-${customer.status || "active"}">
+                      ${customer.status || "active"}
+                    </span>
+                  </td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      // Create a new window and print
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        // Wait for content to load, then print
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+
+        toast({
+          title: "Success",
+          description: `Generated PDF report with ${filteredCustomers.length} customers`,
+        });
+        setShowExportDialog(true);
+      } else {
+        throw new Error("Unable to open print window");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          "Failed to export PDF. Please allow pop-ups and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   // -------------- FETCH ALL CUSTOMERS -------------- //
   const fetchCustomers = async () => {
@@ -371,6 +586,34 @@ export default function Customers() {
         </div>
 
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exportLoading || filteredCustomers.length === 0}
+              >
+                {exportLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToCSV} disabled={exportLoading}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToPDF} disabled={exportLoading}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export as PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             onClick={handleRefresh}
             variant="outline"
@@ -439,7 +682,7 @@ export default function Customers() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Avg. Order Value
+              Avg. Customer Value
             </CardTitle>
             <Activity className="h-4 w-4 text-purple-600" />
           </CardHeader>
@@ -591,17 +834,6 @@ export default function Customers() {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              setViewCustomer(customer);
-                              setIsViewDialogOpen(true);
-                            }}
-                            className="h-8 w-8 p-0 hover:bg-blue-100"
-                          >
-                            <Eye className="h-4 w-4 text-blue-600" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
                               setSelectedCustomer(customer);
                               setIsEditDialogOpen(true);
                             }}
@@ -661,6 +893,36 @@ export default function Customers() {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Export Success Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Download className="h-5 w-5" />
+              Export Successful
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">
+              Your customer data has been exported successfully! The file should
+              be downloading or have opened in a new window.
+            </p>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Exported:</strong> {filteredCustomers.length} customers
+              </p>
+              <p className="text-sm text-blue-600 mt-1">
+                If the download didn't start automatically, please check your
+                browser's download folder or allow pop-ups for this site.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowExportDialog(false)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Customer Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

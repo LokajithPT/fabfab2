@@ -7,9 +7,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { Service } from "@shared/schema";
+
+type Service = {
+  id: string;
+  name: string;
+  price: string;
+};
 
 // Auth fetch helper
 const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -33,6 +43,7 @@ export default function CreateOrder() {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -42,18 +53,29 @@ export default function CreateOrder() {
   });
 
   const handleServiceChange = (serviceId: string) => {
-    setSelectedServices(prev =>
+    setSelectedServices((prev) =>
       prev.includes(serviceId)
-        ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId],
     );
   };
 
-  const selectedServiceDetails = services?.filter(s => selectedServices.includes(s.id));
+  const selectedServiceDetails = services?.filter((s) =>
+    selectedServices.includes(s.id),
+  );
 
   const handleCreateOrder = async () => {
-    if (!customerName || !customerPhone || selectedServices.length === 0 || !customerEmail) {
-      toast({ title: "Validation Error", description: "Fill all required fields", variant: "destructive" });
+    if (
+      !customerName ||
+      !customerPhone ||
+      selectedServices.length === 0 ||
+      !customerEmail
+    ) {
+      toast({
+        title: "Validation Error",
+        description: "Fill all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -61,31 +83,51 @@ export default function CreateOrder() {
       ? selectedServiceDetails.reduce((acc, s) => acc + parseFloat(s.price), 0)
       : 0;
 
-    // Payload matches the new backend
+    // Get service names for comma-separated string
+    const serviceNames = selectedServiceDetails?.map((s) => s.name) || [];
+    const serviceNamesString = serviceNames.join(", ");
+
+    // Payload with both serviceIds array and service names as comma-separated string
     const payload = {
       customerName,
       customerEmail,
       customerPhone,
-      serviceIds: selectedServices,
+      serviceIds: selectedServices, // Keep as array for backend processing
+      serviceId: selectedServices.join(","), // Comma-separated IDs if needed
+      service: serviceNamesString, // Comma-separated service names
       pickupDate,
       specialInstructions,
       total,
     };
 
     try {
-      const newOrder = await authFetch("/api/orders", { method: "POST", body: JSON.stringify(payload) });
+      const newOrder = await authFetch("/api/orders", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
       setCreatedOrderId(newOrder.order.id);
       setIsModalOpen(true);
-      queryClient.invalidateQueries(["/api/orders"]);
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
 
-      // reset form
+      // Reset form
       setCustomerName("");
+      setCustomerEmail("");
       setCustomerPhone("");
       setSelectedServices([]);
       setPickupDate("");
       setSpecialInstructions("");
+
+      toast({
+        title: "Success",
+        description: `Order created successfully! Services: ${serviceNamesString}`,
+      });
     } catch (err: any) {
-      toast({ title: "Error", description: err.error || "Failed to create order", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.error || "Failed to create order",
+        variant: "destructive",
+      });
     }
   };
 
@@ -96,7 +138,14 @@ export default function CreateOrder() {
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in">
       <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Create New Order</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Create New Order
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Select multiple services for your customer
+          </p>
+        </div>
         <Button onClick={handleCreateOrder}>
           <PlusCircle className="h-4 w-4 mr-2" />
           Save Order
@@ -105,78 +154,209 @@ export default function CreateOrder() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          {/* Customer Information Card */}
           <Card>
-            <CardHeader><CardTitle className="flex items-center"><User className="h-5 w-5 mr-2"/>Customer Info</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Customer Information
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
-              <Label>Name</Label>
-              <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full name"/>
-              <Label>Email</Label>
-              <Input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email address" required/>
-              <Label>Phone</Label>
-              <Input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone number"/>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Full Name *</Label>
+                  <Input
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer's full name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerEmail">Email Address *</Label>
+                  <Input
+                    id="customerEmail"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="customer@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customerPhone">Phone Number *</Label>
+                <Input
+                  id="customerPhone"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                />
+              </div>
             </CardContent>
           </Card>
 
+          {/* Service Selection Card */}
           <Card>
-            <CardHeader><CardTitle className="flex items-center"><Truck className="h-5 w-5 mr-2"/>Service & Scheduling</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Truck className="h-5 w-5 mr-2" />
+                Service Selection & Scheduling
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
-              <Label>Service</Label>
-              <div className="space-y-2">
-                {isLoading ? <p>Loading services...</p> : services?.map(s => (
-                  <div key={s.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={s.id}
-                      checked={selectedServices.includes(s.id)}
-                      onCheckedChange={() => handleServiceChange(s.id)}
-                    />
-                    <label
-                      htmlFor={s.id}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {s.name} - ₹{s.price}
-                    </label>
+              <div className="space-y-3">
+                <Label>Select Services *</Label>
+                <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-3">
+                  {isLoading ? (
+                    <p className="text-muted-foreground">Loading services...</p>
+                  ) : services?.length === 0 ? (
+                    <p className="text-muted-foreground">
+                      No services available
+                    </p>
+                  ) : (
+                    services?.map((service) => (
+                      <div
+                        key={service.id}
+                        className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
+                      >
+                        <Checkbox
+                          id={service.id}
+                          checked={selectedServices.includes(service.id)}
+                          onCheckedChange={() =>
+                            handleServiceChange(service.id)
+                          }
+                        />
+                        <label
+                          htmlFor={service.id}
+                          className="flex-1 text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{service.name}</span>
+                            <span className="text-green-600 font-semibold">
+                              ₹{parseFloat(service.price).toFixed(2)}
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {selectedServices.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {selectedServices.length} service
+                    {selectedServices.length !== 1 ? "s" : ""} selected
                   </div>
-                ))}
+                )}
               </div>
 
-              <Label>Pickup Date</Label>
-              <Input type="date" value={pickupDate} onChange={e => setPickupDate(e.target.value)}/>
-              
-              <Label>Instructions</Label>
-              <Textarea value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} placeholder="Notes or special instructions"/>
+              <div className="space-y-2">
+                <Label htmlFor="pickupDate">Pickup Date</Label>
+                <Input
+                  id="pickupDate"
+                  type="date"
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="specialInstructions">
+                  Special Instructions
+                </Label>
+                <Textarea
+                  id="specialInstructions"
+                  value={specialInstructions}
+                  onChange={(e) => setSpecialInstructions(e.target.value)}
+                  placeholder="Any special notes or instructions for this order..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Order Summary Card */}
         <div className="lg:col-span-1">
-          <Card>
-            <CardHeader><CardTitle>Order Summary</CardTitle></CardHeader>
+          <Card className="sticky top-6">
+            <CardHeader>
+              <CardTitle>Order Summary</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
-              {selectedServiceDetails?.map(s => (
-                <div key={s.id} className="flex justify-between">
-                  <span>{s.name}</span>
-                  <span>₹{parseFloat(s.price).toFixed(2)}</span>
+              {selectedServiceDetails && selectedServiceDetails.length > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    {selectedServiceDetails.map((service) => (
+                      <div
+                        key={service.id}
+                        className="flex justify-between items-center py-1"
+                      >
+                        <span className="text-sm">{service.name}</span>
+                        <span className="text-sm font-medium">
+                          ₹{parseFloat(service.price).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center font-bold text-lg">
+                      <span>Total</span>
+                      <span className="text-green-600">
+                        ₹{total.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No services selected</p>
                 </div>
-              ))}
-              <div className="border-t pt-4 flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span>₹{total.toFixed(2)}</span>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
+      {/* Success Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="font-display font-bold text-3xl text-foreground text-center">Order Created Successfully!</DialogTitle></DialogHeader>
-          <div className="py-4 text-center">
-            <p className="text-muted-foreground mb-4">Your order has been placed and is being processed.</p>
-            <Button onClick={() => setIsModalOpen(false)} className="mt-4">Close</Button>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-green-600">
+              Order Created Successfully!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-center space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <PlusCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <div>
+              <p className="text-muted-foreground mb-2">
+                Your order has been placed and is being processed.
+              </p>
+              {createdOrderId && (
+                <p className="text-sm font-medium">
+                  Order ID:{" "}
+                  <span className="font-mono text-blue-600">
+                    #{createdOrderId}
+                  </span>
+                </p>
+              )}
+              {selectedServiceDetails && selectedServiceDetails.length > 0 && (
+                <div className="mt-3 text-sm text-muted-foreground">
+                  <p className="font-medium mb-1">Selected Services:</p>
+                  <p>{selectedServiceDetails.map((s) => s.name).join(", ")}</p>
+                </div>
+              )}
+            </div>
+            <Button onClick={() => setIsModalOpen(false)} className="w-full">
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
