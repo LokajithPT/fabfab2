@@ -18,6 +18,8 @@ import {
   FileSpreadsheet,
   ChevronDown,
   Truck,
+  QrCode,
+  Printer,
 } from "lucide-react";
 import {
   Table,
@@ -122,6 +124,7 @@ export default function OrdersTable() {
   const [editFormData, setEditFormData] = useState<Partial<Order>>({});
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [isPrintQRModalOpen, setIsPrintQRModalOpen] = useState(false);
 
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -234,6 +237,29 @@ export default function OrdersTable() {
       selectedServiceIds.includes(s.id),
     );
     return selectedServices.reduce((acc, s) => acc + parseFloat(s.price), 0);
+  };
+
+  // QR Code functions
+  const handlePrintQR = () => {
+    setIsPrintQRModalOpen(true);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadQR = (orderId: string) => {
+    const qrUrl = `/qr/${orderId}.png`;
+    const link = document.createElement("a");
+    link.href = qrUrl;
+    link.download = `order-${orderId}-qr.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Success",
+      description: `QR code for order ${orderId} downloaded`,
+    });
   };
 
   // Export functions
@@ -790,9 +816,9 @@ export default function OrdersTable() {
         </DialogContent>
       </Dialog>
 
-      {/* View Order Modal */}
+      {/* View Order Modal with QR Code */}
       <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -800,13 +826,86 @@ export default function OrdersTable() {
             </DialogTitle>
           </DialogHeader>
           {viewOrder && (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="space-y-3">
+            <div className="space-y-6 py-4">
+              {/* Order Information Grid */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Phone
+                    </label>
+                    <p>{viewOrder.customerPhone}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Service
+                    </label>
+                    <p>{viewOrder.service.join(", ")}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Pickup Date
+                    </label>
+                    <p>{formatDate(viewOrder.pickupDate)}</p>
+                  </div>
+                </div>
+
+                {/* QR Code Section */}
+                <div className="flex flex-col items-center space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block text-center mb-2">
+                      Order QR Code
+                    </label>
+                    <div
+                      className="w-48 h-48 border-2 border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-400 transition-colors bg-white"
+                      onClick={handlePrintQR}
+                      title="Click to open print view"
+                    >
+                      <img
+                        src={`/qr/${viewOrder.id}.png`}
+                        alt={`QR Code for Order ${viewOrder.id}`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error("QR Code failed to load");
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.parentElement!.innerHTML =
+                            '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">⚠️</div><div class="text-sm">QR Code not found</div></div></div>';
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* QR Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadQR(viewOrder.id)}
+                      className="flex items-center gap-1"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handlePrintQR}
+                      className="flex items-center gap-1"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <label className="text-sm font-medium text-gray-500">
-                    Customer
+                    Total Amount
                   </label>
-                  <p className="font-semibold text-green-600">
+                  <p className="font-semibold text-green-600 text-lg">
                     {formatCurrency(viewOrder.total)}
                   </p>
                 </div>
@@ -817,8 +916,9 @@ export default function OrdersTable() {
                   <div className="mt-1">{getStatusBadge(viewOrder.status)}</div>
                 </div>
               </div>
+
               {viewOrder.specialInstructions && (
-                <div className="col-span-2">
+                <div>
                   <label className="text-sm font-medium text-gray-500">
                     Special Instructions
                   </label>
@@ -829,6 +929,83 @@ export default function OrdersTable() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Print QR Modal */}
+      <Dialog open={isPrintQRModalOpen} onOpenChange={setIsPrintQRModalOpen}>
+        <DialogContent className="max-w-lg print:shadow-none print:border-none">
+          <div className="print:block">
+            <DialogHeader className="print:hidden">
+              <DialogTitle className="text-center">
+                Print QR Code - Order #{viewOrder?.id}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="py-6 text-center space-y-4 print:py-8">
+              <div className="print:mb-6">
+                <h2 className="text-xl font-bold print:text-2xl">
+                  FabClean Laundry
+                </h2>
+                <p className="text-sm text-gray-600 print:text-base">
+                  Order Tracking QR Code
+                </p>
+              </div>
+
+              {viewOrder && (
+                <>
+                  <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
+                    <img
+                      src={`/qr/${viewOrder.id}.png`}
+                      alt={`QR Code for Order ${viewOrder.id}`}
+                      className="w-full h-full object-contain border border-gray-300"
+                    />
+                  </div>
+
+                  <div className="space-y-2 print:space-y-3">
+                    <p className="font-mono text-lg print:text-xl">
+                      Order #{viewOrder.id}
+                    </p>
+                    <p className="text-sm print:text-base">
+                      Customer: {viewOrder.customerName}
+                    </p>
+                    <p className="text-sm print:text-base">
+                      Phone: {viewOrder.customerPhone}
+                    </p>
+                    {viewOrder.pickupDate && (
+                      <p className="text-sm print:text-base">
+                        Pickup: {formatDate(viewOrder.pickupDate)}
+                      </p>
+                    )}
+                    <p className="text-sm print:text-base font-semibold">
+                      Total: {formatCurrency(viewOrder.total)}
+                    </p>
+                    <div className="flex justify-center">
+                      {getStatusBadge(viewOrder.status)}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="text-xs text-gray-500 print:text-sm print:mt-8">
+                <p>Scan this QR code to track your order</p>
+                <p>Keep this receipt safe</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center mt-6 print:hidden">
+              <Button onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Now
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsPrintQRModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1047,6 +1224,24 @@ export default function OrdersTable() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print\\:block,
+          .print\\:block * {
+            visibility: visible;
+          }
+          .print\\:block {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }
