@@ -366,8 +366,8 @@ def get_services():
     return jsonify([s.to_dict() for s in services]), 200
 
 # ---------------- ADMIN AUTH ---------------- #
-ADMIN_USER = "hahaboi"
-ADMIN_PASS = "somethingsomething"
+ADMIN_USER = "fabclean"
+ADMIN_PASS = "fabzclean"
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
