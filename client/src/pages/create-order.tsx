@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PlusCircle, User, Truck } from "lucide-react";
+import { PlusCircle, User, Truck, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,9 @@ export default function CreateOrder() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -107,7 +109,10 @@ export default function CreateOrder() {
       });
 
       setCreatedOrderId(newOrder.order.id);
+      // Set QR code URL - this will be served by your Flask backend
+      setQrCodeUrl(`/qr/${newOrder.order.id}.png`);
       setIsModalOpen(true);
+
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
 
       // Reset form
@@ -128,6 +133,25 @@ export default function CreateOrder() {
         description: err.error || "Failed to create order",
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePrintQR = () => {
+    setIsPrintModalOpen(true);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadQR = () => {
+    if (qrCodeUrl && createdOrderId) {
+      const link = document.createElement("a");
+      link.href = qrCodeUrl;
+      link.download = `order-${createdOrderId}-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -251,7 +275,6 @@ export default function CreateOrder() {
                   </div>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="pickupDate">Pickup Date</Label>
                 <Input
@@ -261,7 +284,6 @@ export default function CreateOrder() {
                   onChange={(e) => setPickupDate(e.target.value)}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="specialInstructions">
                   Special Instructions
@@ -320,7 +342,7 @@ export default function CreateOrder() {
         </div>
       </div>
 
-      {/* Success Modal */}
+      {/* Success Modal with QR Code */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -332,6 +354,45 @@ export default function CreateOrder() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
               <PlusCircle className="h-8 w-8 text-green-600" />
             </div>
+
+            {/* QR Code Display */}
+            {qrCodeUrl && (
+              <div className="space-y-3">
+                <div
+                  className="mx-auto w-48 h-48 border-2 border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-400 transition-colors"
+                  onClick={handlePrintQR}
+                  title="Click to open print view"
+                >
+                  <img
+                    src={qrCodeUrl}
+                    alt={`QR Code for Order ${createdOrderId}`}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      console.error("QR Code failed to load");
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  Click QR code to print or use buttons below
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadQR}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handlePrintQR}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div>
               <p className="text-muted-foreground mb-2">
                 Your order has been placed and is being processed.
@@ -357,6 +418,96 @@ export default function CreateOrder() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Print Modal */}
+      <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
+        <DialogContent className="max-w-lg print:shadow-none print:border-none">
+          <div className="print:block">
+            <DialogHeader className="print:hidden">
+              <DialogTitle className="text-center">
+                Print QR Code - Order #{createdOrderId}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="py-6 text-center space-y-4 print:py-8">
+              <div className="print:mb-6">
+                <h2 className="text-xl font-bold print:text-2xl">
+                  FabClean Laundry
+                </h2>
+                <p className="text-sm text-gray-600 print:text-base">
+                  Order Tracking QR Code
+                </p>
+              </div>
+
+              {qrCodeUrl && (
+                <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
+                  <img
+                    src={qrCodeUrl}
+                    alt={`QR Code for Order ${createdOrderId}`}
+                    className="w-full h-full object-contain border border-gray-300"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2 print:space-y-3">
+                <p className="font-mono text-lg print:text-xl">
+                  Order #{createdOrderId}
+                </p>
+                <p className="text-sm print:text-base">
+                  Customer: {customerName}
+                </p>
+                <p className="text-sm print:text-base">
+                  Phone: {customerPhone}
+                </p>
+                {pickupDate && (
+                  <p className="text-sm print:text-base">
+                    Pickup: {new Date(pickupDate).toLocaleDateString()}
+                  </p>
+                )}
+                <p className="text-sm print:text-base font-semibold">
+                  Total: ₹{total.toFixed(2)}
+                </p>
+              </div>
+
+              <div className="text-xs text-gray-500 print:text-sm print:mt-8">
+                <p>Scan this QR code to track your order</p>
+                <p>Keep this receipt safe</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center mt-6 print:hidden">
+              <Button onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Now
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsPrintModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print\\:block,
+          .print\\:block * {
+            visibility: visible;
+          }
+          .print\\:block {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }

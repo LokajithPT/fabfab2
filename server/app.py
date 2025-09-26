@@ -180,6 +180,17 @@ class Order(db.Model):
         }
 #worker shit 
 
+
+@app.route("/qr/<filename>")
+def serve_qr_code(filename):
+    """Serve QR code images"""
+    qr_dir = os.path.join(BASE_DIR, "qr")
+    return send_from_directory(qr_dir, filename)
+
+
+
+
+
 @app.route("/worker/scan", methods=["POST"])
 def worker_scan():
     data = request.json
