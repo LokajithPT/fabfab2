@@ -51,6 +51,9 @@ def admin_login_required(f):
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return wrapper
+
+
+
 def generate_qr(order):
     qr_dir = os.path.join(BASE_DIR, "qr")
     os.makedirs(qr_dir, exist_ok=True)

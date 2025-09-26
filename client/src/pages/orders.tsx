@@ -17,6 +17,7 @@ import {
   FileText,
   FileSpreadsheet,
   ChevronDown,
+  Truck,
 } from "lucide-react";
 import {
   Table,
@@ -52,6 +53,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useLocation } from "wouter";
 
 // Enhanced admin fetch with better error handling
@@ -79,6 +82,12 @@ const adminFetch = async (url: string, options: RequestInit = {}) => {
   }
 };
 
+interface Service {
+  id: string;
+  name: string;
+  price: string;
+}
+
 interface Order {
   id: string;
   customerName: string;
@@ -98,6 +107,7 @@ export default function OrdersTable() {
   // State management
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -110,10 +120,26 @@ export default function OrdersTable() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Order>>({});
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
 
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
+
+  // Fetch services
+  const fetchServices = async () => {
+    try {
+      const data: Service[] = await adminFetch("/api/services");
+      setServices(data);
+    } catch (err) {
+      console.error("Failed to fetch services:", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch services",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch orders with loading state
   const fetchOrders = async () => {
@@ -136,6 +162,7 @@ export default function OrdersTable() {
 
   useEffect(() => {
     fetchOrders();
+    fetchServices();
   }, []);
 
   // Enhanced filtering and sorting
@@ -167,7 +194,6 @@ export default function OrdersTable() {
         const aVal = a[sortField];
         const bVal = b[sortField];
         if (aVal === undefined || bVal === undefined) return 0;
-
         if (typeof aVal === "string" && typeof bVal === "string") {
           return sortDirection === "asc"
             ? aVal.localeCompare(bVal)
@@ -193,10 +219,26 @@ export default function OrdersTable() {
     }
   };
 
+  // Service selection handlers for edit modal
+  const handleServiceChange = (serviceId: string) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId],
+    );
+  };
+
+  // Calculate total for selected services
+  const calculateTotal = () => {
+    const selectedServices = services.filter((s) =>
+      selectedServiceIds.includes(s.id),
+    );
+    return selectedServices.reduce((acc, s) => acc + parseFloat(s.price), 0);
+  };
+
   // Export functions
   const exportToCSV = () => {
     setExportLoading(true);
-
     try {
       const headers = [
         "Order ID",
@@ -209,7 +251,6 @@ export default function OrdersTable() {
         "Special Instructions",
         "Created At",
       ];
-
       const csvContent = [
         headers.join(","),
         ...filteredOrders.map((order) =>
@@ -258,7 +299,6 @@ export default function OrdersTable() {
 
   const exportToPDF = () => {
     setExportLoading(true);
-
     try {
       // Create a simple HTML content for PDF
       const htmlContent = `
@@ -305,7 +345,6 @@ export default function OrdersTable() {
               <li>Cancelled: ${filteredOrders.filter((o) => o.status === "Cancelled").length}</li>
             </ul>
           </div>
-
           <table>
             <thead>
               <tr>
@@ -349,7 +388,6 @@ export default function OrdersTable() {
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-
         // Wait for content to load, then print
         setTimeout(() => {
           printWindow.print();
@@ -394,12 +432,12 @@ export default function OrdersTable() {
     setEditFormData({
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      service: order.service.join(", "),
       specialInstructions: order.specialInstructions,
       pickupDate: order.pickupDate ? order.pickupDate.split("T")[0] : "",
-      total: order.total,
       status: order.status || "Pending",
     });
+    // Set selected service IDs based on the order's serviceId array
+    setSelectedServiceIds(order.serviceId || []);
   };
 
   const handleDelete = (order: Order) => {
@@ -407,13 +445,21 @@ export default function OrdersTable() {
   };
 
   const confirmEdit = async () => {
-    if (!orderToEdit || !editFormData) return;
+    if (!orderToEdit) return;
 
     setLoading(true);
     try {
+      // Get selected service details
+      const selectedServices = services.filter((s) =>
+        selectedServiceIds.includes(s.id),
+      );
+
       const payload = {
         ...editFormData,
-        serviceId: editFormData.service, // Send as comma-separated string
+        serviceIds: selectedServiceIds, // Array of service IDs
+        serviceId: selectedServiceIds.join(","), // Comma-separated IDs if needed
+        service: selectedServices.map((s) => s.name).join(", "), // Service names
+        total: calculateTotal(),
       };
 
       await adminFetch(`/admin/api/orders/${orderToEdit.id}`, {
@@ -421,7 +467,14 @@ export default function OrdersTable() {
         body: JSON.stringify(payload),
       });
 
-      const updatedOrder = { ...orderToEdit, ...editFormData } as Order;
+      const updatedOrder = {
+        ...orderToEdit,
+        ...editFormData,
+        serviceId: selectedServiceIds,
+        service: selectedServices.map((s) => s.name),
+        total: calculateTotal(),
+      } as Order;
+
       setOrders((prev) =>
         prev.map((o) => (o.id === orderToEdit.id ? updatedOrder : o)),
       );
@@ -430,9 +483,9 @@ export default function OrdersTable() {
         title: "Success",
         description: `Order ${orderToEdit.id} updated successfully`,
       });
-
       setOrderToEdit(null);
       setEditFormData({});
+      setSelectedServiceIds([]);
     } catch (err) {
       toast({
         title: "Error",
@@ -452,14 +505,11 @@ export default function OrdersTable() {
       await adminFetch(`/admin/api/orders/${orderToDelete.id}`, {
         method: "DELETE",
       });
-
       setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
-
       toast({
         title: "Success",
         description: `Order ${orderToDelete.id} deleted successfully`,
       });
-
       setOrderToDelete(null);
     } catch (err) {
       toast({
@@ -479,7 +529,6 @@ export default function OrdersTable() {
       Completed: "bg-emerald-100 text-emerald-800 border-emerald-200",
       Cancelled: "bg-red-100 text-red-800 border-red-200",
     };
-
     return (
       <Badge className={`${variants[status || "Pending"]} font-medium`}>
         {status || "Pending"}
@@ -543,7 +592,6 @@ export default function OrdersTable() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
           <Button
             onClick={handleRefresh}
             variant="outline"
@@ -758,32 +806,6 @@ export default function OrdersTable() {
                   <label className="text-sm font-medium text-gray-500">
                     Customer
                   </label>
-                  <p className="font-semibold">{viewOrder.customerName}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Phone
-                  </label>
-                  <p>{viewOrder.customerPhone}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Service
-                  </label>
-                  <p>{viewOrder.service.join(", ")}</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Pickup Date
-                  </label>
-                  <p>{formatDate(viewOrder.pickupDate)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Total Amount
-                  </label>
                   <p className="font-semibold text-green-600">
                     {formatCurrency(viewOrder.total)}
                   </p>
@@ -812,7 +834,7 @@ export default function OrdersTable() {
 
       {/* Edit Order Modal */}
       <Dialog open={!!orderToEdit} onOpenChange={() => setOrderToEdit(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5" />
@@ -820,102 +842,134 @@ export default function OrdersTable() {
             </DialogTitle>
           </DialogHeader>
           {orderToEdit && (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Customer Name</label>
-                  <Input
-                    value={editFormData.customerName || ""}
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        customerName: e.target.value,
-                      }))
-                    }
-                  />
+            <div className="space-y-6 py-4">
+              {/* Customer Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-customer-name">Customer Name</Label>
+                    <Input
+                      id="edit-customer-name"
+                      value={editFormData.customerName || ""}
+                      onChange={(e) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          customerName: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-customer-phone">Phone</Label>
+                    <Input
+                      id="edit-customer-phone"
+                      value={editFormData.customerPhone || ""}
+                      onChange={(e) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          customerPhone: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Phone</label>
-                  <Input
-                    value={editFormData.customerPhone || ""}
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        customerPhone: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Service</label>
-                  <Input
-                    value={editFormData.service || ""}
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        service: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Pickup Date</label>
-                  <Input
-                    type="date"
-                    value={editFormData.pickupDate || ""}
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        pickupDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Total Amount</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editFormData.total || ""}
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        total: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Status</label>
-                  <Select
-                    value={editFormData.status || "Pending"}
-                    onValueChange={(value) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        status: value as Order["status"],
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Processing">Processing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-pickup-date">Pickup Date</Label>
+                    <Input
+                      id="edit-pickup-date"
+                      type="date"
+                      value={editFormData.pickupDate || ""}
+                      onChange={(e) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          pickupDate: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-status">Status</Label>
+                    <Select
+                      value={editFormData.status || "Pending"}
+                      onValueChange={(value) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          status: value as Order["status"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="Processing">Processing</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-              <div className="col-span-2">
-                <label className="text-sm font-medium">
+
+              {/* Service Selection */}
+              <div>
+                <Label className="flex items-center gap-2 mb-3">
+                  <Truck className="h-4 w-4" />
+                  Select Services *
+                </Label>
+                <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-4 bg-gray-50">
+                  {services.length === 0 ? (
+                    <p className="text-gray-500">Loading services...</p>
+                  ) : (
+                    services.map((service) => (
+                      <div
+                        key={service.id}
+                        className="flex items-center space-x-3 p-3 hover:bg-white rounded-md transition-colors"
+                      >
+                        <Checkbox
+                          id={`edit-service-${service.id}`}
+                          checked={selectedServiceIds.includes(service.id)}
+                          onCheckedChange={() =>
+                            handleServiceChange(service.id)
+                          }
+                        />
+                        <label
+                          htmlFor={`edit-service-${service.id}`}
+                          className="flex-1 text-sm font-medium leading-none cursor-pointer"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{service.name}</span>
+                            <span className="text-green-600 font-semibold">
+                              ₹{parseFloat(service.price).toFixed(2)}
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {selectedServiceIds.length > 0 && (
+                  <div className="mt-2 p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <strong>{selectedServiceIds.length}</strong> service
+                      {selectedServiceIds.length !== 1 ? "s" : ""} selected
+                    </p>
+                    <p className="text-sm font-semibold text-green-600 mt-1">
+                      Total: ₹{calculateTotal().toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Special Instructions */}
+              <div>
+                <Label htmlFor="edit-special-instructions">
                   Special Instructions
-                </label>
+                </Label>
                 <Textarea
+                  id="edit-special-instructions"
                   placeholder="Enter any special instructions..."
                   value={editFormData.specialInstructions || ""}
                   onChange={(e) =>
@@ -925,15 +979,25 @@ export default function OrdersTable() {
                     }))
                   }
                   rows={3}
+                  className="mt-2"
                 />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOrderToEdit(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOrderToEdit(null);
+                setSelectedServiceIds([]);
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={confirmEdit} disabled={loading}>
+            <Button
+              onClick={confirmEdit}
+              disabled={loading || selectedServiceIds.length === 0}
+            >
               {loading ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
