@@ -26,7 +26,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ---------------- CONFIG ---------------- #
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DIST_FOLDER = os.path.join(BASE_DIR, "..", "dist")  # react admin build
+DIST_FOLDER = os.path.join(BASE_DIR, "reactshit")  # react admin build
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")  # login templates
 
 app = Flask(

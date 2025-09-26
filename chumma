@@ -1,1 +1,4 @@
-is this shit working 
+mv dist reactshit 
+rm -rf server/reactshit
+mv reactshit server/
+
