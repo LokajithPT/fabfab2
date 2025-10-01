@@ -1,5 +1,6 @@
 import os
-import qrcode
+import barcode
+from barcode.writer import ImageWriter
 import uuid
 from datetime import datetime
 from functools import wraps
@@ -58,24 +59,18 @@ def generate_qr(order):
     qr_dir = os.path.join(BASE_DIR, "qr")
     os.makedirs(qr_dir, exist_ok=True)
 
-    # Encode all order info in the QR
-    qr_data = {
-        "orderId": order.id,
-        "customerName": order.customer_name,
-        "customerEmail": order.customer_email,
-        "customerPhone": order.customer_phone,
-        "service": order.service_name,
-        "pickupDate": order.pickup_date,
-        "specialInstructions": order.special_instructions,
-        "total": order.total,
-        "createdAt": order.created_at.isoformat(),
-    }
+    # Encode only the order ID in the barcode
+    order_id = order.id
 
-    img = qrcode.make(qr_data)
-    qr_path = os.path.join(qr_dir, f"{order.id}.png")
-    img.save(qr_path)
+    # Generate barcode
+    EAN = barcode.get_barcode_class('code128')
+    ean = EAN(order_id, writer=ImageWriter())
+    
+    # Save barcode
+    qr_path = os.path.join(qr_dir, f"{order.id}")
+    ean.save(qr_path)
 
-    return qr_path
+    return f"{qr_path}.png"
 
 # ---------------- MODELS ---------------- #
 class Worker(db.Model):
