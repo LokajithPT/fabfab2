@@ -50,7 +50,7 @@ export function Sidebar() {
         </Link>
       </div>
       <nav className="flex flex-col gap-2 p-4 font-medium flex-1">
-        <NavLink to="/employeedash" icon={Home}>
+        <NavLink to="/dashboard" icon={Home}>
           Dashboard
         </NavLink>
         <NavLink to="/orders" icon={ShoppingCart}>

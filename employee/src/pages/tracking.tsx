@@ -62,11 +62,20 @@ export default function Tracking() {
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["/api/orders"],
+    queryKey: ["https://ahhhhhhhhhhhhhhhh.onrender.com/api/orders"],
+    queryFn: async () => {
+      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/orders?email=test@example.com");
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    }
   });
 
   const { data: shipments, isLoading: shipmentsLoading } = useQuery<Shipment[]>({
     queryKey: ["/api/shipments"],
+    queryFn: async () => {
+      // No shipments endpoint in Flask app; return empty array
+      return [] as Shipment[];
+    }
   });
 
   const filteredOrders = orders?.filter(order => {

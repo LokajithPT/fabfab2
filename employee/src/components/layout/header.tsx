@@ -15,12 +15,12 @@ interface HeaderProps {
 
 export function Header({ onToggleSidebar, isSidebarVisible }: HeaderProps) {
   const [location] = useLocation();
-  const [paths, setPaths] = useState(['Employeedash']);
+  const [paths, setPaths] = useState(['Dashboard']);
 
   useEffect(() => {
     const pathSegments = location.split('/').filter(p => p);
     if (pathSegments.length === 0) {
-      setPaths(['Employeedash']);
+      setPaths(['Dashboard']);
     } else {
       setPaths(pathSegments.map(capitalize));
     }

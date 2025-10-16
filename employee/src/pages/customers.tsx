@@ -95,21 +95,7 @@ type Customer = {
   notes?: string;
 };
 
-// -------------- HELPER: AUTH FETCH -------------- //
-const authFetch = async (url: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem("token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  };
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    console.error("Unauthorized! JWT might be expired. Please login again.");
-    // You might want to redirect to login here
-  }
-  return res;
-};
+
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -387,7 +373,7 @@ export default function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await authFetch("/api/customers/public", { method: "GET" });
+      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/customers/public", { method: "GET" });
       if (!res.ok) throw await res.json();
       const data = await res.json();
 
@@ -434,8 +420,9 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await authFetch("/admin/api/customers", {
+      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/admin/api/customers", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newCustomer),
       });
       if (!res.ok) throw await res.json();
@@ -479,8 +466,9 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await authFetch(`/admin/api/customers/${updated.id}`, {
+      const res = await fetch(`https://ahhhhhhhhhhhhhhhh.onrender.com/admin/api/customers/${updated.id}`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
       if (!res.ok) throw await res.json();

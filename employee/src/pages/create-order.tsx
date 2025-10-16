@@ -51,7 +51,7 @@ export default function CreateOrder() {
 
   const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ["/api/services"],
-    queryFn: () => authFetch("/api/services"),
+    queryFn: () => authFetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/services"),
   });
 
   const handleServiceChange = (serviceId: string) => {
@@ -103,14 +103,14 @@ export default function CreateOrder() {
     };
 
     try {
-      const newOrder = await authFetch("/api/orders", {
+      const newOrder = await authFetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/orders", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       setCreatedOrderId(newOrder.order.id);
-      // Set QR code URL - this will be served by your Flask backend
-      setQrCodeUrl(`/qr/${newOrder.order.id}.png`);
+      // Set QR code URL from Render backend
+      setQrCodeUrl(`https://ahhhhhhhhhhhhhhhh.onrender.com/qr/${newOrder.order.id}.png`);
       setIsModalOpen(true);
 
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
