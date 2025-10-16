@@ -367,6 +367,12 @@ def get_services():
 ADMIN_USER = "fabclean"
 ADMIN_PASS = "fabzclean"
 
+@app.route("/checkemployee", methods=["POST"])
+def check_employee():
+    data = request.get_json()
+    if data.get("username") == "loki" and data.get("password") == "loki":
+        return "okkanna"
+    return "nokanna"
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
