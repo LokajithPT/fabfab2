@@ -15,6 +15,7 @@ import Customers from "@/pages/customers";
 import { MainLayout } from "@/components/layout/main-layout";
 import Inventory from "@/pages/inventory";
 import Logistics from "@/pages/logistics";
+import TransitOrders from "@/pages/transit-orders";
 import SpeedInsights from "@/components/speed-insights";
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/create-order" component={CreateOrder} />
                 <Route path="/tracking" component={Tracking} />
                 <Route path="/logistics" component={Logistics} />
+                <Route path="/transit-orders" component={TransitOrders} />
                 <Route component={Employeedash} />
               </Switch>
             </MainLayout>

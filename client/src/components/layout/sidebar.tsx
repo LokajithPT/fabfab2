@@ -68,6 +68,9 @@ export function Sidebar() {
         <NavLink to="/logistics" icon={Truck}>
           Logistics
         </NavLink>
+        <NavLink to="/transit-orders" icon={Truck}>
+          Transit
+        </NavLink>
         <NavLink to="/analytics" icon={LineChart}>
           Analytics
         </NavLink>

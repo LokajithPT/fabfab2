@@ -17,6 +17,7 @@ import Analytics from "@/pages/analytics";
 import { MainLayout } from "@/components/layout/main-layout";
 import Inventory from "@/pages/inventory";
 import Logistics from "@/pages/logistics";
+import TransitOrders from "@/pages/transit-orders";
 import SpeedInsights from "@/components/speed-insights";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -54,6 +55,7 @@ function Router() {
         <Route path="/create-order" component={CreateOrder} />
         <Route path="/tracking" component={Tracking} />
         <Route path="/logistics" component={Logistics} />
+        <Route path="/transit-orders" component={TransitOrders} />
         <Route component={redir} />
       </Switch>
     </MainLayout>

@@ -68,6 +68,9 @@ export function Sidebar() {
         <NavLink to="/logistics" icon={Truck}>
           Logistics
         </NavLink>
+        <NavLink to="/transit-orders" icon={Truck}>
+          Transit
+        </NavLink>
       </nav>
       <nav className="mt-auto flex flex-col gap-2 p-4">
         <Link
