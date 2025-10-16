@@ -28,7 +28,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # ---------------- CONFIG ---------------- #
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DIST_FOLDER = os.path.join(BASE_DIR, "reactshit")  # react admin build
-EMPLOYEE_DIST_FOLDER = os.path.join(BASE_DIR, "employeeshit") # react employee build
+
 TEMPLATE_FOLDER = os.path.join(BASE_DIR, "templates")  # login templates
 
 app = Flask(
@@ -366,8 +366,7 @@ def get_services():
 # ---------------- ADMIN AUTH ---------------- #
 ADMIN_USER = "fabclean"
 ADMIN_PASS = "fabzclean"
-EMPLOYEE_USER = "loki"
-EMPLOYEE_PASS = "loki"
+
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -393,23 +392,7 @@ def admin_logout():
     session.pop("admin_logged_in", None)
     return jsonify({"message": "Admin logged out"}), 200
 
-@app.route("/employee/login", methods=["GET", "POST"])
-def employee_login():
-    if request.method == "POST":
-        if request.is_json:
-            data = request.get_json()
-            if data.get("username") == EMPLOYEE_USER and data.get("password") == EMPLOYEE_PASS:
-                session["employee_logged_in"] = True
-                return jsonify({"message": "Employee login successful"}), 200
-            return jsonify({"error": "Invalid credentials"}), 401
-        else:
-            username = request.form.get("username")
-            password = request.form.get("password")
-            if username == EMPLOYEE_USER and password == EMPLOYEE_PASS:
-                session["employee_logged_in"] = True
-                return redirect(url_for("serve_employee_index"))
-            return render_template("nigesh.html", error="Invalid credentials")
-    return render_template("nigesh.html")
+
 
 # ---------------- ADMIN CRUD ---------------- #
 @app.route("/admin/api/services", methods=["GET"])
@@ -457,6 +440,8 @@ def get_customers():
 @app.route("/api/customers/public", methods=["GET"])
 def get_customers_public():
     return jsonify([c.to_dict() for c in Customer.query.all()])
+
+
 
 @app.route("/admin/api/customers", methods=["POST"])
 def create_customer():
@@ -545,18 +530,7 @@ def serve_admin(path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")
 
-# ---------------- EMPLOYEE REACT ROUTING ---------------- #
-@app.route("/employee")
-def serve_employee_index():
-    if not session.get("employee_logged_in"):
-        return redirect(url_for("employee_login"))
-    return send_from_directory(EMPLOYEE_DIST_FOLDER, "index.html")
 
-@app.route("/employee/<path:path>")
-def serve_employee_files(path):
-    if not session.get("employee_logged_in"):
-        return redirect(url_for("employee_login"))
-    return send_from_directory(EMPLOYEE_DIST_FOLDER, path)
 
 # ---------------- INIT DB ---------------- #
 def ensure_db():
