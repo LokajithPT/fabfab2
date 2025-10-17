@@ -99,9 +99,11 @@ export default function TransitOrdersPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any | null>(null);
+  const [preppingForReturn, setPreppingForReturn] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showRawData, setShowRawData] = useState(false);
 
   useEffect(() => {
@@ -121,8 +123,9 @@ export default function TransitOrdersPage() {
 
   const filteredHistory = useMemo(() => transitHistory.filter(batch => 
     (batch.transitId.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (statusFilter === 'all' || batch.status.toLowerCase() === statusFilter)
-  ), [transitHistory, searchQuery, statusFilter]);
+    (statusFilter === 'all' || batch.status.toLowerCase() === statusFilter) &&
+    (typeFilter === 'all' || batch.type === typeFilter)
+  ), [transitHistory, searchQuery, statusFilter, typeFilter]);
 
   // --- React Query Mutations ---
   const mutationOptions = {
@@ -165,11 +168,22 @@ export default function TransitOrdersPage() {
             return <Button size="sm" onClick={() => statusUpdateMutation.mutate({ batchId: batch.id, action: 'receive' })} className="gap-1 bg-green-600 hover:bg-green-700"><Check className="h-3 w-3" />Receive</Button>;
         case 'ARRIVED':
             if (batch.type === 'STORE_TO_FACTORY') {
-                const arrivedOrders = allOrders.filter(o => batch.orders.some(bo => bo.id === o.id));
-                return <Button size="sm" onClick={() => handleCreateBatch('FACTORY_TO_STORE', arrivedOrders)} className="gap-1 bg-purple-600 hover:bg-purple-700"><ArrowLeftRight className="h-3 w-3" />Prep for Return</Button>;
+                return <Button size="sm" onClick={() => statusUpdateMutation.mutate({ batchId: batch.id, action: 'complete' })} className="gap-1 bg-green-600 hover:bg-green-700"><CheckCircle2 className="h-3 w-3" />Complete</Button>;
             }
             if (batch.type === 'FACTORY_TO_STORE') {
                 return <Button size="sm" onClick={() => statusUpdateMutation.mutate({ batchId: batch.id, action: 'complete' })} className="gap-1 bg-teal-600 hover:bg-teal-700"><CheckCircle2 className="h-3 w-3" />Complete</Button>;
+            }
+            return null;
+        case 'COMPLETED':
+            if (batch.type === 'STORE_TO_FACTORY') {
+                const arrivedOrders = allOrders.filter(o => batch.orders.some(bo => bo.id === o.id));
+                return <Button size="sm" onClick={() => {
+                  setPreppingForReturn(prev => [...prev, batch.id]);
+                  handleCreateBatch('FACTORY_TO_STORE', arrivedOrders);
+                }}
+                disabled={preppingForReturn.includes(batch.id)}
+                className="gap-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                ><ArrowLeftRight className="h-3 w-3" />{preppingForReturn.includes(batch.id) ? 'Processing...' : 'Prep for Return'}</Button>;
             }
             return null;
         default:
@@ -260,6 +274,7 @@ export default function TransitOrdersPage() {
               <div className="flex gap-2">
                 <Input placeholder="Search by Transit ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="PENDING">Pending</SelectItem><SelectItem value="IN_TRANSIT">In Transit</SelectItem><SelectItem value="ARRIVED">Arrived</SelectItem><SelectItem value="COMPLETED">Completed</SelectItem></SelectContent></Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}><SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="STORE_TO_FACTORY">Store to Factory</SelectItem><SelectItem value="FACTORY_TO_STORE">Factory to Store</SelectItem></SelectContent></Select>
               </div>
               <div className="space-y-2 max-h-[600px] overflow-y-auto">
                 {isLoadingHistory ? <p>Loading...</p> : filteredHistory.map(batch => (

@@ -539,6 +539,17 @@ def create_transit_batch():
     if not all([order_ids, transit_type, created_by]):
         return jsonify({"error": "Missing required fields"}), 400
 
+    if transit_type == "FACTORY_TO_STORE":
+        # Check for existing non-completed transits for the same orders
+        existing_transits = TransitOrder.query.join(TransitBatch).filter(
+            TransitOrder.order_id.in_(order_ids),
+            TransitBatch.type == "FACTORY_TO_STORE",
+            TransitBatch.status != "COMPLETED"
+        ).first()
+
+        if existing_transits:
+            return jsonify({"error": "A factory to store transit for one or more of these orders is already in progress."}), 400
+
     # Create the batch
     id_prefix = "S2F" if transit_type == "STORE_TO_FACTORY" else "F2S"
     batch_transit_id = f"{id_prefix}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
@@ -625,8 +636,12 @@ def complete_transit_batch(batch_id):
     order_ids = [to.order_id for to in transit_orders]
     orders = Order.query.filter(Order.id.in_(order_ids)).all()
 
-    for order in orders:
-        order.status = "Ready for Delivery"
+    if batch.type == "STORE_TO_FACTORY":
+        for order in orders:
+            order.status = "Processing"
+    else:  # FACTORY_TO_STORE
+        for order in orders:
+            order.status = "Ready for Delivery"
 
     batch.status = "COMPLETED"
     batch.completed_at = datetime.utcnow()
