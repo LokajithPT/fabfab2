@@ -18,6 +18,8 @@ import Logistics from "@/pages/logistics";
 import TransitOrders from "@/pages/transit-orders";
 import SpeedInsights from "@/components/speed-insights";
 
+import ChangePassword from "@/pages/change-password";
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [, setLocation] = useLocation();
@@ -44,6 +46,7 @@ function App() {
                 <Route path="/tracking" component={Tracking} />
                 <Route path="/logistics" component={Logistics} />
                 <Route path="/transit-orders" component={TransitOrders} />
+                <Route path="/change-password" component={ChangePassword} />
                 <Route component={Employeedash} />
               </Switch>
             </MainLayout>

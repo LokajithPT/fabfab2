@@ -73,6 +73,9 @@ export function Sidebar() {
         </NavLink>
       </nav>
       <nav className="mt-auto flex flex-col gap-2 p-4">
+        <NavLink to="/change-password" icon={Settings}>
+          Change Password
+        </NavLink>
         <Link
           href="/settings"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"

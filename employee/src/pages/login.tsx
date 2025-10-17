@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 
 const FabCleanLogin = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('https://ahhhhhhhhhhhhhhhh.onrender.com/checkemployee', {
+      const response = await fetch('http://localhost:5005/employee/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
-      const data = await response.text();
-      if (data === 'okkanna') {
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('fab-employee-token', data.token);
         onLogin();
       } else {
-        setError('Invalid credentials');
+        setError(data.error || 'Invalid credentials');
       }
     } catch (err) {
       setError('Failed to connect to the server');
@@ -225,11 +226,11 @@ const FabCleanLogin = ({ onLogin }) => {
           <div style={styles.inputGroup}>
             <UserIcon />
             <input
-              type="text"
-              placeholder="Username"
+              type="email"
+              placeholder="Email"
               style={styles.inputField}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 

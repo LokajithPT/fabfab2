@@ -79,8 +79,15 @@ def generate_qr(order):
 class Worker(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, raw):
+        self.password_hash = generate_password_hash(raw)
+
+    def check_password(self, raw):
+        return check_password_hash(self.password_hash, raw)
 
     def to_dict(self):
         return {
@@ -363,16 +370,51 @@ def get_services():
     services = Service.query.all()
     return jsonify([s.to_dict() for s in services]), 200
 
+# ---------------- EMPLOYEE AUTH ---------------- #
+@app.route("/employee/login", methods=["POST"])
+def employee_login():
+    if not request.is_json:
+        return jsonify({"error": "Expected JSON"}), 400
+
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+    if not email or not password:
+        return jsonify({"error": "Missing fields"}), 400
+
+    worker = Worker.query.filter_by(email=email).first()
+    if not worker or not worker.check_password(password):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    token = create_access_token(identity={
+        "id": worker.id,
+        "email": worker.email,
+        "name": worker.name
+    })
+
+    return jsonify({"token": token, "worker": worker.to_dict()}), 200
+
+@app.route("/employee/change-password", methods=["POST"])
+@jwt_required()
+def change_password():
+    worker_identity = get_jwt_identity()
+    worker = Worker.query.get_or_404(worker_identity["id"])
+    
+    data = request.get_json()
+    new_password = data.get("new_password")
+
+    if not new_password:
+        return jsonify({"error": "New password is required"}), 400
+
+    worker.set_password(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Password updated successfully"}), 200
+
+
 # ---------------- ADMIN AUTH ---------------- #
 ADMIN_USER = "fabclean"
 ADMIN_PASS = "fabzclean"
-
-@app.route("/checkemployee", methods=["POST"])
-def check_employee():
-    data = request.get_json()
-    if data.get("username") == "loki" and data.get("password") == "loki":
-        return "okkanna"
-    return "nokanna"
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -397,6 +439,49 @@ def admin_login():
 def admin_logout():
     session.pop("admin_logged_in", None)
     return jsonify({"message": "Admin logged out"}), 200
+
+# ---------------- ADMIN WORKER MANAGEMENT ---------------- #
+@app.route("/admin/api/workers", methods=["GET"])
+@admin_login_required
+def get_workers():
+    workers = Worker.query.all()
+    return jsonify([w.to_dict() for w in workers]), 200
+
+@app.route("/admin/api/workers", methods=["POST"])
+@admin_login_required
+def create_worker():
+    data = request.json or {}
+    required = ["name", "email", "password"]
+    if not all(k in data for k in required):
+        return jsonify({"error": "Missing fields"}), 400
+    if Worker.query.filter_by(email=data["email"]).first():
+        return jsonify({"error": "Email exists"}), 400
+
+    worker = Worker(name=data["name"], email=data["email"])
+    worker.set_password(data["password"])
+    db.session.add(worker)
+    db.session.commit()
+    return jsonify(worker.to_dict()), 201
+
+@app.route("/admin/api/workers/<int:worker_id>", methods=["PUT"])
+@admin_login_required
+def update_worker(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    data = request.json or {}
+    worker.name = data.get("name", worker.name)
+    worker.email = data.get("email", worker.email)
+    if "password" in data:
+        worker.set_password(data["password"])
+    db.session.commit()
+    return jsonify(worker.to_dict()), 200
+
+@app.route("/admin/api/workers/<int:worker_id>", methods=["DELETE"])
+@admin_login_required
+def delete_worker(worker_id):
+    worker = Worker.query.get_or_404(worker_id)
+    db.session.delete(worker)
+    db.session.commit()
+    return jsonify({"message": "Worker deleted"}), 200
 
 
 
@@ -553,8 +638,16 @@ def ensure_db():
             ])
             db.session.commit()
 
+        # seed a default worker if none exist
+        if not Worker.query.first():
+            default_worker = Worker(name="Employee", email="emp@emp.com")
+            default_worker.set_password("emp")
+            db.session.add(default_worker)
+            db.session.commit()
+
 # ---------------- RUN ---------------- #
 if __name__ == "__main__":
+    ensure_db()
+
     app.run(port=5005, debug=True)
-ensure_db()
 

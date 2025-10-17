@@ -29,63 +29,62 @@ export const orders = pgTable("orders", {
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone"),
-  status: text("status", { enum: ["pending", "processing", "completed", "cancelled"] }).notNull(), // pending, processing, completed, cancelled
+  status: text("status", { enum: ["pending", "processing", "completed", "cancelled", "in_store", "ready_for_transit", "out_for_delivery"] }).notNull(), // pending, processing, completed, cancelled, in_store, ready_for_transit, out_for_delivery
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).notNull().default("pending"), // pending, paid, failed
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   items: jsonb("items").notNull(), // Array of order items
   shippingAddress: jsonb("shipping_address"),
+  pickupDate: timestamp("pickup_date"), // Scheduled pickup date
+  transitOrderId: varchar("transit_order_id").references(() => transitOrders.id), // Link to transit batch
+  transitStatus: text("transit_status", { enum: ["pending", "in_transit", "delivered"] }), // Status within transit
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const deliveries = pgTable("deliveries", {
+export const transitOrders = pgTable("transit_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: varchar("order_id").references(() => orders.id),
-  driverName: text("driver_name").notNull(),
-  vehicleId: text("vehicle_id").notNull(),
-  status: text("status", { enum: ["pending", "in_transit", "delivered", "failed"] }).notNull().default("pending"), // pending, in_transit, delivered, failed
-  estimatedDelivery: timestamp("estimated_delivery"),
-  actualDelivery: timestamp("actual_delivery"),
-  location: jsonb("location"), // Current GPS coordinates
-  route: jsonb("route"), // Array of delivery stops
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const orderTransactions = pgTable("order_transactions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  transactionNumber: varchar("transaction_number", { length: 255 }).notNull().unique(),
-  items: jsonb("items").notNull(), // Array of transaction items
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  paymentMethod: text("payment_method", { enum: ["cash", "credit", "debit", "mobile"] }).notNull(), // cash, credit, debit, mobile
-  cashierId: text("cashier_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const customers = pgTable("customers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  email: text("email").unique(),
-  phone: text("phone"),
-  address: jsonb("address"),
+  transitId: text("transit_id").notNull().unique(),
+  type: text("type", { enum: ["store_to_factory", "factory_to_store"] }).notNull(),
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  createdBy: text("created_by").notNull(),
+  status: text("status", { enum: ["in_transit", "completed", "cancelled"] }).notNull().default("in_transit"),
+  vehicleNumber: text("vehicle_number"),
+  vehicleType: text("vehicle_type"),
+  driverName: text("driver_name"),
+  driverPhone: text("driver_phone"),
+  driverLicense: text("driver_license"),
+  employeeName: text("employee_name"),
+  employeeId: text("employee_id"),
+  employeeDesignation: text("employee_designation"),
+  employeePhone: text("employee_phone"),
   totalOrders: integer("total_orders").default(0),
-  totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"),
-  lastOrder: timestamp("last_order"),
+  totalItems: integer("total_items").default(0),
+  totalWeight: decimal("total_weight", { precision: 10, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const services = pgTable("services", {
+export const transitOrderItems = pgTable("transit_order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  category: text("category").notNull(),
-  description: text("description"),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  duration: text("duration").notNull(),
-  status: text("status", { enum: ["Active", "Inactive"] }).notNull().default("Active"),
+  transitOrderId: varchar("transit_order_id").references(() => transitOrders.id).notNull(),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  orderNumber: text("order_number").notNull(),
+  customerName: text("customer_name").notNull(),
+  itemCount: integer("item_count").default(0),
+  status: text("status", { enum: ["pending", "in_transit", "delivered"] }).notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const transitStatusHistory = pgTable("transit_status_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transitOrderId: varchar("transit_order_id").references(() => transitOrders.id).notNull(),
+  status: text("status", { enum: ["in_transit", "completed", "cancelled"] }).notNull(),
+  notes: text("notes"),
+  location: text("location"),
+  updatedBy: text("updated_by"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Insert schemas
@@ -129,6 +128,23 @@ export const insertServiceSchema = createInsertSchema(services).omit({
   updatedAt: true,
 });
 
+export const insertTransitOrderSchema = createInsertSchema(transitOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTransitOrderItemSchema = createInsertSchema(transitOrderItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTransitStatusHistorySchema = createInsertSchema(transitStatusHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -150,3 +166,12 @@ export type Customer = typeof customers.$inferSelect;
 
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Service = typeof services.$inferSelect;
+
+export type InsertTransitOrder = z.infer<typeof insertTransitOrderSchema>;
+export type TransitOrder = typeof transitOrders.$inferSelect;
+
+export type InsertTransitOrderItem = z.infer<typeof insertTransitOrderItemSchema>;
+export type TransitOrderItem = typeof transitOrderItems.$inferSelect;
+
+export type InsertTransitStatusHistory = z.infer<typeof insertTransitStatusHistorySchema>;
+export type TransitStatusHistory = typeof transitStatusHistory.$inferSelect;

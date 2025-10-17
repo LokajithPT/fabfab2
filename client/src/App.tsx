@@ -32,6 +32,8 @@ function redir() {
   return null;
 }
 
+import Employees from "@/pages/employees";
+
 function Router() {
   const [, setLocation] = useLocation(); // For programmatic navigation
 
@@ -52,6 +54,7 @@ function Router() {
         <Route path="/customers" component={Customers} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/services" component={Services} />
+        <Route path="/employees" component={Employees} />
         <Route path="/create-order" component={CreateOrder} />
         <Route path="/tracking" component={Tracking} />
         <Route path="/logistics" component={Logistics} />

@@ -59,6 +59,9 @@ export function Sidebar() {
         <NavLink to="/customers" icon={Users2}>
           Customers
         </NavLink>
+        <NavLink to="/employees" icon={Users2}>
+          Employees
+        </NavLink>
         <NavLink to="/services" icon={Scissors}>
           Services
         </NavLink>
