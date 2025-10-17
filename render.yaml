@@ -4,7 +4,7 @@ services:
     name: fabfab-server
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: flask --app server/app init-db && gunicorn server.app:app
+    startCommand: ./start.sh
     plan: free
     envVars:
       - key: DATABASE_URL
