@@ -816,7 +816,7 @@ def ensure_db():
 def init_db_command():
     """Creates the database tables and seeds them with initial data."""
     ensure_db()
-
+  
 
 # ---------------- RUN ---------------- #
 if __name__ == "__main__":
