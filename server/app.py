@@ -158,31 +158,59 @@ class Customer(db.Model):
         }
 
 class Order(db.Model):
-    __tablename = "orders"
+    __tablename__ = "orders"
     id = db.Column(db.String(20), primary_key=True, default=lambda: str(uuid.uuid4())[:8])
     customer_name = db.Column(db.String(100), nullable=False)
-    customer_email = db.Column(db.String(120), nullable=False)  # NEW
+    customer_email = db.Column(db.String(120), nullable=False)
     customer_phone = db.Column(db.String(20), nullable=False)
     service_id = db.Column(db.String(20), db.ForeignKey("service.id"))
     service_name = db.Column(db.String(100))
     pickup_date = db.Column(db.String(50))
     special_instructions = db.Column(db.Text)
     total = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default="At Store", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             "id": self.id,
             "customerName": self.customer_name,
-            "customerEmail": self.customer_email,   # NEW
+            "customerEmail": self.customer_email,
             "customerPhone": self.customer_phone,
             "serviceId": self.service_id.split(",") if self.service_id else [],
             "service": self.service_name.split(",") if self.service_name else [],
             "pickupDate": self.pickup_date,
             "specialInstructions": self.special_instructions,
             "total": self.total,
+            "status": self.status,
             "createdAt": self.created_at.isoformat(),
         }
+
+class TransitBatch(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transit_id = db.Column(db.String(50), unique=True, nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # STORE_TO_FACTORY or FACTORY_TO_STORE
+    status = db.Column(db.String(50), default="PENDING", nullable=False)
+    created_by = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "transitId": self.transit_id,
+            "type": self.type,
+            "status": self.status,
+            "createdBy": self.created_by,
+            "createdAt": self.created_at.isoformat(),
+            "completedAt": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+class TransitOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transit_batch_id = db.Column(db.Integer, db.ForeignKey('transit_batch.id'), nullable=False)
+    order_id = db.Column(db.String(20), db.ForeignKey('orders.id'), nullable=False)
+
 #worker shit 
 
 
@@ -305,6 +333,7 @@ def create_order_auto_customer():
         pickup_date=data.get("pickupDate", ""),
         special_instructions=data.get("specialInstructions", ""),
         total=total_calculated,
+        status="At Store"  # Set default status
     )
     db.session.add(order)
     db.session.commit()
@@ -484,6 +513,128 @@ def delete_worker(worker_id):
     return jsonify({"message": "Worker deleted"}), 200
 
 
+# ---------------- ADMIN TRANSIT MANAGEMENT ---------------- #
+@app.route("/admin/api/transit-batches", methods=["GET"])
+@admin_login_required
+def get_transit_batches():
+    batches = TransitBatch.query.order_by(TransitBatch.created_at.desc()).all()
+    results = []
+    for batch in batches:
+        batch_dict = batch.to_dict()
+        transit_orders = TransitOrder.query.filter_by(transit_batch_id=batch.id).all()
+        order_ids = [to.order_id for to in transit_orders]
+        orders = Order.query.filter(Order.id.in_(order_ids)).all()
+        batch_dict['orders'] = [o.to_dict() for o in orders]
+        results.append(batch_dict)
+    return jsonify(results), 200
+
+@app.route("/admin/api/transit-batches", methods=["POST"])
+@admin_login_required
+def create_transit_batch():
+    data = request.json or {}
+    order_ids = data.get("order_ids")
+    transit_type = data.get("type")
+    created_by = data.get("created_by")
+
+    if not all([order_ids, transit_type, created_by]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    # Create the batch
+    id_prefix = "S2F" if transit_type == "STORE_TO_FACTORY" else "F2S"
+    batch_transit_id = f"{id_prefix}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    new_batch = TransitBatch(
+        transit_id=batch_transit_id,
+        type=transit_type,
+        created_by=created_by
+    )
+    db.session.add(new_batch)
+    db.session.commit()
+
+    # Link orders and update status
+    for order_id in order_ids:
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({"error": f"Order {order_id} not found"}), 404
+        
+        # This endpoint is now only for creating the batch, status change happens on initiate
+        transit_order = TransitOrder(transit_batch_id=new_batch.id, order_id=order.id)
+        db.session.add(transit_order)
+
+    db.session.commit()
+    return jsonify(new_batch.to_dict()), 201
+
+@app.route("/admin/api/transit-batches/<int:batch_id>", methods=["GET"])
+@admin_login_required
+def get_transit_batch(batch_id):
+    batch = TransitBatch.query.get_or_404(batch_id)
+    transit_orders = TransitOrder.query.filter_by(transit_batch_id=batch.id).all()
+    order_ids = [to.order_id for to in transit_orders]
+    orders = Order.query.filter(Order.id.in_(order_ids)).all()
+
+    batch_dict = batch.to_dict()
+    batch_dict['orders'] = [o.to_dict() for o in orders]
+    
+    return jsonify(batch_dict), 200
+
+@app.route("/admin/api/transit-batches/<int:batch_id>/initiate", methods=["PUT"])
+@admin_login_required
+def initiate_transit(batch_id):
+    batch = TransitBatch.query.get_or_404(batch_id)
+    if batch.status != "PENDING":
+        return jsonify({"error": "Transit can only be initiated from PENDING state"}), 400
+
+    transit_orders = TransitOrder.query.filter_by(transit_batch_id=batch.id).all()
+    order_ids = [to.order_id for to in transit_orders]
+    orders = Order.query.filter(Order.id.in_(order_ids)).all()
+
+    new_status = "In Transit to Factory" if batch.type == "STORE_TO_FACTORY" else "In Transit to Store"
+    for order in orders:
+        order.status = new_status
+
+    batch.status = "IN_TRANSIT"
+    db.session.commit()
+    return jsonify(batch.to_dict()), 200
+
+@app.route("/admin/api/transit-batches/<int:batch_id>/receive", methods=["PUT"])
+@admin_login_required
+def receive_transit_batch(batch_id):
+    batch = TransitBatch.query.get_or_404(batch_id)
+    if batch.status != "IN_TRANSIT":
+        return jsonify({"error": "Can only receive a batch that is IN_TRANSIT"}), 400
+
+    transit_orders = TransitOrder.query.filter_by(transit_batch_id=batch.id).all()
+    order_ids = [to.order_id for to in transit_orders]
+    orders = Order.query.filter(Order.id.in_(order_ids)).all()
+
+    new_status = "At Factory" if batch.type == "STORE_TO_FACTORY" else "At Store"
+    for order in orders:
+        order.status = new_status
+
+    batch.status = "ARRIVED"
+    db.session.commit()
+    return jsonify(batch.to_dict()), 200
+
+@app.route("/admin/api/transit-batches/<int:batch_id>/complete", methods=["PUT"])
+@admin_login_required
+def complete_transit_batch(batch_id):
+    batch = TransitBatch.query.get_or_404(batch_id)
+    if batch.status != "ARRIVED":
+        return jsonify({"error": "Can only complete a batch that has ARRIVED"}), 400
+
+    transit_orders = TransitOrder.query.filter_by(transit_batch_id=batch.id).all()
+    order_ids = [to.order_id for to in transit_orders]
+    orders = Order.query.filter(Order.id.in_(order_ids)).all()
+
+    for order in orders:
+        order.status = "Ready for Delivery"
+
+    batch.status = "COMPLETED"
+    batch.completed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify(batch.to_dict()), 200
+
+
+
 
 # ---------------- ADMIN CRUD ---------------- #
 @app.route("/admin/api/services", methods=["GET"])
@@ -624,9 +775,8 @@ def serve_admin(path):
 
 
 # ---------------- INIT DB COMMAND ---------------- #
-@app.cli.command("init-db")
-def init_db_command():
-    """Creates the database tables and seeds them with initial data."""
+def ensure_db():
+    """Internal function to create and seed the database."""
     db.create_all()
 
     # seed services if none exist
@@ -647,10 +797,15 @@ def init_db_command():
     
     print("Database initialized and seeded.")
 
+@app.cli.command("init-db")
+def init_db_command():
+    """Creates the database tables and seeds them with initial data."""
+    ensure_db()
+
 
 # ---------------- RUN ---------------- #
 if __name__ == "__main__":
     with app.app_context():
-        init_db_command()
+        ensure_db()
     app.run(port=5005, debug=True)
 

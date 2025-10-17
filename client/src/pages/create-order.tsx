@@ -113,7 +113,7 @@ export default function CreateOrder() {
       setQrCodeUrl(`/qr/${newOrder.order.id}.png`);
       setIsModalOpen(true);
 
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
 
       // Reset form
       setCustomerName("");
