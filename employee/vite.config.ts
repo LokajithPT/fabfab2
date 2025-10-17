@@ -10,15 +10,15 @@ export default defineConfig({
   server: {
     proxy: {
       '/employee': {
-        target: 'https://ahhhhhhhhhhhhhhhh.onrender.com/',
+        target: 'http://localhost:5005/',
         changeOrigin: true,
       },
       '/admin': {
-        target: 'https://ahhhhhhhhhhhhhhhh.onrender.com/',
+        target: 'http://localhost:5005/',
         changeOrigin: true,
       },
        '/auth': {
-        target: 'https://ahhhhhhhhhhhhhhhh.onrender.com/',
+        target: 'http://localhost:5005/',
         changeOrigin: true,
       },
     },

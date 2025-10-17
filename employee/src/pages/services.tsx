@@ -56,7 +56,7 @@ export default function Services() {
   const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ["/admin/api/services"],
     queryFn: async () => {
-      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/services")
+      const res = await fetch("http://localhost:5005/api/services")
       if (!res.ok) throw new Error("Failed to fetch services")
       return res.json()
     }
@@ -64,7 +64,7 @@ export default function Services() {
 
   const createMutation = useMutation({
     mutationFn: async (newService: Partial<Service>) => {
-      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/services", {
+      const res = await fetch("http://localhost:5005/api/services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newService),
@@ -77,7 +77,7 @@ export default function Services() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string, updates: Partial<Service> }) => {
-      const res = await fetch(`https://ahhhhhhhhhhhhhhhh.onrender.com/api/services/${id}`, {
+      const res = await fetch(`http://localhost:5005/api/services/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -90,7 +90,7 @@ export default function Services() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`https://ahhhhhhhhhhhhhhhh.onrender.com/api/services/${id}`, { method: "DELETE" })
+      const res = await fetch(`http://localhost:5005/api/services/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to delete service")
       return id
     },

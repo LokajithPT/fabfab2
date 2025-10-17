@@ -373,7 +373,7 @@ export default function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/api/customers/public", { method: "GET" });
+      const res = await fetch("http://localhost:5005/api/customers/public", { method: "GET" });
       if (!res.ok) throw await res.json();
       const data = await res.json();
 
@@ -420,7 +420,7 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await fetch("https://ahhhhhhhhhhhhhhhh.onrender.com/admin/api/customers", {
+      const res = await fetch("http://localhost:5005/admin/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newCustomer),
@@ -466,7 +466,7 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await fetch(`https://ahhhhhhhhhhhhhhhh.onrender.com/admin/api/customers/${updated.id}`, {
+      const res = await fetch(`http://localhost:5005/admin/api/customers/${updated.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),

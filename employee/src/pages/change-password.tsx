@@ -8,7 +8,7 @@ const ChangePassword = () => {
   const handleChangePassword = async () => {
     try {
       const token = localStorage.getItem('fab-employee-token');
-      const response = await fetch('https://ahhhhhhhhhhhhhhhh.onrender.com/employee/change-password', {
+      const response = await fetch('http://localhost:5005/employee/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
