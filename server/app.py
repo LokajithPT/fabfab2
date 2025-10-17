@@ -623,31 +623,34 @@ def serve_admin(path):
 
 
 
-# ---------------- INIT DB ---------------- #
-def ensure_db():
-    with app.app_context():
-        # create tables if not exist
-        db.create_all()
+# ---------------- INIT DB COMMAND ---------------- #
+@app.cli.command("init-db")
+def init_db_command():
+    """Creates the database tables and seeds them with initial data."""
+    db.create_all()
 
-        # seed services if none exist
-        if not Service.query.first():
-            db.session.add_all([
-                Service(id="s1", name="Laundry", price=200, duration="24h"),
-                Service(id="s2", name="Dry Cleaning", price=300, duration="48h"),
-                Service(id="s3", name="Ironing", price=100, duration="12h"),
-            ])
-            db.session.commit()
+    # seed services if none exist
+    if not Service.query.first():
+        db.session.add_all([
+            Service(id="s1", name="Laundry", price=200, duration="24h"),
+            Service(id="s2", name="Dry Cleaning", price=300, duration="48h"),
+            Service(id="s3", name="Ironing", price=100, duration="12h"),
+        ])
+        db.session.commit()
 
-        # seed a default worker if none exist
-        if not Worker.query.first():
-            default_worker = Worker(name="Employee", email="emp@emp.com")
-            default_worker.set_password("emp")
-            db.session.add(default_worker)
-            db.session.commit()
+    # seed a default worker if none exist
+    if not Worker.query.first():
+        default_worker = Worker(name="Employee", email="emp@emp.com")
+        default_worker.set_password("emp")
+        db.session.add(default_worker)
+        db.session.commit()
+    
+    print("Database initialized and seeded.")
+
 
 # ---------------- RUN ---------------- #
 if __name__ == "__main__":
-    ensure_db()
-
+    with app.app_context():
+        init_db_command()
     app.run(port=5005, debug=True)
 
