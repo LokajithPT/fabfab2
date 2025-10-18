@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Package, Plus, X, Check, CheckCircle2, Clock, FileText, ArrowLeftRight, Eye } from 'lucide-react';
+import { Truck, Package, Plus, X, Check, CheckCircle2, Clock, FileText, ArrowLeftRight, Eye, RefreshCw, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // --- Backend BASE URL ---
 const BASE_URL = 'http://localhost:5005';
@@ -62,14 +63,16 @@ export default function TransitOrdersPage() {
   }, [currentBatch]);
 
   // --- Data Fetch ---
-  const { data: transitHistory = [], isLoading: isLoadingHistory } = useQuery({
+  const { data: transitHistory = [], isLoading: isLoadingHistory, isError: isErrorHistory, error: errorHistory, refetch: refetchHistory } = useQuery({
     queryKey: ['transitBatches'],
     queryFn: fetchTransitBatches,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const { data: allOrders = [], isLoading: isLoadingOrders } = useQuery({
+  const { data: allOrders = [], isLoading: isLoadingOrders, isError: isErrorOrders, error: errorOrders, refetch: refetchOrders } = useQuery({
     queryKey: ['orders'],
     queryFn: fetchOrders,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // --- Derived lists ---
@@ -220,7 +223,13 @@ export default function TransitOrdersPage() {
             <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3"><Truck className="h-10 w-10 text-primary" /> Transit Management</h1>
             <p className="text-muted-foreground mt-2">Manage shipments between store and factory.</p>
           </div>
-          <Button onClick={() => setShowRawData(!showRawData)} variant="outline">{showRawData ? 'Hide' : 'Show'} Raw Order Data</Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => { refetchHistory(); refetchOrders(); }} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Reload Data
+            </Button>
+            <Button onClick={() => setShowRawData(!showRawData)} variant="outline">{showRawData ? 'Hide' : 'Show'} Raw Order Data</Button>
+          </div>
         </header>
 
         {showRawData && (
@@ -260,7 +269,7 @@ export default function TransitOrdersPage() {
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg max-h-[400px] overflow-y-auto">
-                {isLoadingOrders ? <p className="p-4">Loading...</p> : availableOrders.length > 0 ? (
+                {isLoadingOrders ? <p className="p-4">Loading...</p> : isErrorOrders ? <Alert variant="destructive" className="m-4"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{errorOrders.message}</AlertDescription></Alert> : availableOrders.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -366,7 +375,7 @@ export default function TransitOrdersPage() {
             </div>
 
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {isLoadingHistory ? <p>Loading...</p> : filteredHistory.map((batch: any) => (
+              {isLoadingHistory ? <p>Loading...</p> : isErrorHistory ? <Alert variant="destructive" className="m-4"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{errorHistory.message}</AlertDescription></Alert> : filteredHistory.map((batch: any) => (
                 <motion.div key={batch.id} className="border rounded-lg p-4 flex justify-between items-start">
                   <div className="space-y-2 flex-1">
                     <h4 className="font-semibold">{batch.transitId}</h4>
