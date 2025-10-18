@@ -165,6 +165,23 @@ export default function TransitOrdersPage() {
         );
       case 'COMPLETED':
         if (batch.type === 'STORE_TO_FACTORY') {
+          const orderIdsInThisBatch = new Set((batch.orders || []).map((o: any) => o.id));
+          const hasReturnBatch = transitHistory.some(
+            (historyBatch: any) =>
+              historyBatch.type === 'FACTORY_TO_STORE' &&
+              historyBatch.id !== batch.id &&
+              (historyBatch.orders || []).some((o: any) => orderIdsInThisBatch.has(o.id))
+          );
+
+          if (hasReturnBatch) {
+            return (
+              <Badge variant="outline" className="p-2 text-xs">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Return Initiated
+              </Badge>
+            );
+          }
+
           const arrivedOrders = batch.orders || [];
           const isProcessing = preppingForReturn.includes(batch.id);
 
@@ -177,7 +194,7 @@ export default function TransitOrdersPage() {
                 }
                 setPreppingForReturn((prev) => [...prev, batch.id]);
                 handleCreateBatch('FACTORY_TO_STORE', arrivedOrders, () => {
-                  setPreppingForReturn((prev) => prev.filter((id) => id !== batch.id));
+                  setPreppingForReturn((prev) => prev.filter((id: any) => id !== batch.id));
                   queryClient.invalidateQueries({ queryKey: ['transitBatches'] });
                 });
               }}
@@ -430,3 +447,4 @@ export default function TransitOrdersPage() {
     </PageTransition>
   );
 }
+
