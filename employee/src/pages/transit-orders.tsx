@@ -16,7 +16,7 @@ import { PageTransition } from '@/components/ui/page-transition';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // --- Backend BASE URL ---
-const BASE_URL = 'http://localhost:5005'; // change if your backend is on another host
+const BASE_URL = 'http://localhost:5005';
 
 // --- API Functions ---
 const apiFetch = async (url: string, options: RequestInit = {}) => {
@@ -61,7 +61,7 @@ export default function TransitOrdersPage() {
     localStorage.setItem('currentTransitBatch', JSON.stringify(currentBatch));
   }, [currentBatch]);
 
-  // --- Data ---
+  // --- Data Fetch ---
   const { data: transitHistory = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ['transitBatches'],
     queryFn: fetchTransitBatches,
@@ -126,12 +126,12 @@ export default function TransitOrdersPage() {
   const handleAddOrderToBatch = (order: any) => setCurrentBatch((prev) => [...prev, order]);
   const handleRemoveOrderFromBatch = (orderId: string) => setCurrentBatch((prev) => prev.filter((o) => o.id !== orderId));
 
-  const handleCreateBatch = (type: 'STORE_TO_FACTORY' | 'FACTORY_TO_STORE', orders: any[]) => {
+  const handleCreateBatch = (type: 'STORE_TO_FACTORY' | 'FACTORY_TO_STORE', orders: any[], callback?: () => void) => {
     if (!orders || orders.length === 0) {
       toast({ title: 'Error', description: 'Cannot create an empty batch.', variant: 'destructive' });
       return;
     }
-    createBatchMutation.mutate({ order_ids: orders.map((o) => o.id), type, created_by: 'Admin' });
+    createBatchMutation.mutate({ order_ids: orders.map((o) => o.id), type, created_by: 'Admin' }, { onSuccess: callback });
   };
 
   const stats = {
@@ -165,18 +165,26 @@ export default function TransitOrdersPage() {
         );
       case 'COMPLETED':
         if (batch.type === 'STORE_TO_FACTORY') {
-          const arrivedOrders = allOrders.filter((o: any) => batch.orders.some((bo: any) => bo.id === o.id));
+          const arrivedOrders = batch.orders || [];
+          const isProcessing = preppingForReturn.includes(batch.id);
+
           return (
             <Button
               onClick={() => {
+                if (!arrivedOrders.length) {
+                  toast({ title: 'Error', description: 'No orders to return.', variant: 'destructive' });
+                  return;
+                }
                 setPreppingForReturn((prev) => [...prev, batch.id]);
-                handleCreateBatch('FACTORY_TO_STORE', arrivedOrders);
+                handleCreateBatch('FACTORY_TO_STORE', arrivedOrders, () => {
+                  setPreppingForReturn((prev) => prev.filter((id) => id !== batch.id));
+                  queryClient.invalidateQueries({ queryKey: ['transitBatches'] });
+                });
               }}
-              disabled={preppingForReturn.includes(batch.id)}
-              className={`${baseBtnStyle} ${preppingForReturn.includes(batch.id) ? 'bg-purple-400 text-white opacity-70 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+              disabled={isProcessing}
+              className={`${baseBtnStyle} ${isProcessing ? 'bg-purple-400 text-white opacity-70 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
             >
-              <ArrowLeftRight className="h-4 w-4" />
-              {preppingForReturn.includes(batch.id) ? 'Processing...' : 'Prep for Return'}
+              <ArrowLeftRight className="h-4 w-4" /> {isProcessing ? 'Processing...' : 'Prep Return'}
             </Button>
           );
         }
@@ -186,21 +194,18 @@ export default function TransitOrdersPage() {
     }
   };
 
-  // --- UI ---
   return (
     <PageTransition>
       <div className="min-h-screen bg-background p-6 space-y-6">
+        {/* HEADER */}
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3"><Truck className="h-10 w-10 text-primary" /> Transit Management</h1>
             <p className="text-muted-foreground mt-2">Manage shipments between store and factory.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={() => setShowRawData(!showRawData)} variant="outline">{showRawData ? 'Hide' : 'Show'} Raw Order Data</Button>
-          </div>
+          <Button onClick={() => setShowRawData(!showRawData)} variant="outline">{showRawData ? 'Hide' : 'Show'} Raw Order Data</Button>
         </header>
 
-        {/* Raw Data Toggle */}
         {showRawData && (
           <Card>
             <CardHeader><CardTitle>Raw Order Data</CardTitle></CardHeader>
@@ -208,7 +213,7 @@ export default function TransitOrdersPage() {
           </Card>
         )}
 
-        {/* Stats */}
+        {/* STATS */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Pending</CardTitle><Clock className="h-4 w-4 text-yellow-600" /></CardHeader>
@@ -228,13 +233,13 @@ export default function TransitOrdersPage() {
           </Card>
         </div>
 
-        {/* Orders + Current Batch */}
+        {/* Orders + Batch */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Available Orders */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Available Orders for Transit</CardTitle>
-              <CardDescription>Click an order to add it to the current batch. Only orders with status "At Store" are shown.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Available Orders</CardTitle>
+              <CardDescription>Click to add to batch. Only "At Store" orders shown.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg max-h-[400px] overflow-y-auto">
@@ -261,7 +266,7 @@ export default function TransitOrdersPage() {
                       ))}
                     </TableBody>
                   </Table>
-                ) : <div className="text-center py-12 text-muted-foreground"><CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No orders available for transit.</p></div>}
+                ) : <div className="text-center py-12 text-muted-foreground"><CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No orders available.</p></div>}
               </div>
             </CardContent>
           </Card>
@@ -270,7 +275,7 @@ export default function TransitOrdersPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" />Current Batch</CardTitle>
-              <CardDescription>Orders to be included in the new transit batch.</CardDescription>
+              <CardDescription>Orders to be included in new batch.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {currentBatch.length > 0 ? (
@@ -318,10 +323,10 @@ export default function TransitOrdersPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Transit History</CardTitle>
-            <CardDescription>View and manage past and present transit batches.</CardDescription>
+            <CardDescription>View and manage transit batches.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <Input placeholder="Search by Transit ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
@@ -337,8 +342,8 @@ export default function TransitOrdersPage() {
                 <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="STORE_TO_FACTORY">Store to Factory</SelectItem>
-                  <SelectItem value="FACTORY_TO_STORE">Factory to Store</SelectItem>
+                  <SelectItem value="STORE_TO_FACTORY">Store → Factory</SelectItem>
+                  <SelectItem value="FACTORY_TO_STORE">Factory → Store</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -372,7 +377,7 @@ export default function TransitOrdersPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => setCurrentBatch([])} className="bg-destructive hover:bg-destructive/90">Yes, Clear</AlertDialogAction>
+              <AlertDialogAction onClick={() => { setCurrentBatch([]); localStorage.removeItem('currentTransitBatch'); }} className="bg-destructive hover:bg-destructive/90">Yes, Clear</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
