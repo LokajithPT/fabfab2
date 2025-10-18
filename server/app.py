@@ -424,16 +424,18 @@ def employee_login():
     return jsonify({"token": token, "worker": worker.to_dict()}), 200
 
 @app.route("/employee/change-password", methods=["POST"])
-@jwt_required()
 def change_password():
-    worker_identity = get_jwt_identity()
-    worker = Worker.query.get_or_404(worker_identity["id"])
-    
     data = request.get_json()
+    email = data.get("email")
     new_password = data.get("new_password")
 
-    if not new_password:
-        return jsonify({"error": "New password is required"}), 400
+    if not email or not new_password:
+        return jsonify({"error": "Email and new password are required"}), 400
+
+    worker = Worker.query.filter_by(email=email).first()
+
+    if not worker:
+        return jsonify({"error": "Worker not found"}), 404
 
     worker.set_password(new_password)
     db.session.commit()

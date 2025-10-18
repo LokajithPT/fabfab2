@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,6 +23,14 @@ import ChangePassword from "@/pages/change-password";
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const token = localStorage.getItem('fab-employee-token');
+    const workerData = localStorage.getItem('fab-employee-worker');
+    if (token && workerData) {
+      setIsLoggedIn(true);
+    }
+  }, []);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
