@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 
 const fetchEmployees = async () => {
   const response = await fetch('/admin/api/workers');
@@ -94,7 +95,7 @@ const Employees = () => {
         <h2 className="text-2xl font-bold">Manage Employees</h2>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Add Employee</Button>
+            <Button><PlusCircle className="mr-2 h-4 w-4" />Add Employee</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -106,7 +107,7 @@ const Employees = () => {
                 <Input name="email" type="email" placeholder="Email" required />
                 <Input name="password" type="password" placeholder="Password" required />
               </div>
-              <Button type="submit">Create</Button>
+              <Button type="submit"><PlusCircle className="mr-2 h-4 w-4" />Create</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -128,7 +129,7 @@ const Employees = () => {
               <TableCell>
                 <Dialog open={isEditDialogOpen && selectedEmployee?.id === employee.id} onOpenChange={setIsEditDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" onClick={() => setSelectedEmployee(employee)}>Edit</Button>
+                    <Button variant="outline" size="icon" onClick={() => setSelectedEmployee(employee)}><Edit className="h-4 w-4" /></Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -140,11 +141,11 @@ const Employees = () => {
                         <Input name="email" type="email" defaultValue={selectedEmployee?.email} placeholder="Email" />
                         <Input name="password" type="password" placeholder="New Password (optional)" />
                       </div>
-                      <Button type="submit">Save Changes</Button>
+                      <Button type="submit"><Edit className="mr-2 h-4 w-4" />Save Changes</Button>
                     </form>
                   </DialogContent>
                 </Dialog>
-                <Button variant="destructive" onClick={() => handleDelete(employee.id)} className="ml-2">Delete</Button>
+                <Button variant="destructive" size="icon" onClick={() => handleDelete(employee.id)} className="ml-2"><Trash2 className="h-4 w-4" /></Button>
               </TableCell>
             </TableRow>
           ))}
