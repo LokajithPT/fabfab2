@@ -132,7 +132,7 @@ export default function OrdersTable() {
   // Fetch services
   const fetchServices = async () => {
     try {
-      const data: Service[] = await adminFetch("http://localhost:5005/api/services");
+      const data: Service[] = await adminFetch("http://117.218.59.207:5001/api/services");
       setServices(data);
     } catch (err) {
       console.error("Failed to fetch services:", err);
@@ -148,7 +148,7 @@ export default function OrdersTable() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const data: Order[] = await adminFetch("http://localhost:5005/admin/api/orders");
+      const data: Order[] = await adminFetch("http://117.218.59.207:5001/admin/api/orders");
       setOrders(data);
       setFilteredOrders(data);
     } catch (err) {
@@ -249,7 +249,7 @@ export default function OrdersTable() {
   };
 
   const handleDownloadQR = (orderId: string) => {
-    const qrUrl = `http://localhost:5005/qr/${orderId}.png`;
+    const qrUrl = `http://117.218.59.207:5001/qr/${orderId}.png`;
     const link = document.createElement("a");
     link.href = qrUrl;
     link.download = `order-${orderId}-qr.png`;
@@ -486,7 +486,7 @@ export default function OrdersTable() {
         total: calculateTotal(),
       };
 
-      await adminFetch(`http://localhost:5005/admin/api/orders/${orderToEdit.id}`, {
+      await adminFetch(`http://117.218.59.207:5001/admin/api/orders/${orderToEdit.id}`, {
         method: "PUT",
         body: JSON.stringify(payload),
       });
@@ -829,10 +829,7 @@ export default function OrdersTable() {
                       title="Click to open print view"
                     >
                       <img
-                        src={`http://localhost:5005/qr/${viewOrder.id}.png`}
-                        alt={`QR Code for Order ${viewOrder.id}`}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
+                        src={`http://117.218.59.207:5001/qr/${viewOrder.id}.png`}                        onError={(e) => {
                           console.error("QR Code failed to load");
                           e.currentTarget.style.display = "none";
                           e.currentTarget.parentElement!.innerHTML =
@@ -923,7 +920,7 @@ export default function OrdersTable() {
                 <>
                   <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
                     <img
-                      src={`http://localhost:5005/qr/${viewOrder.id}.png`}
+                      src={`http://117.218.59.207:5001/qr/${viewOrder.id}.png`}
                       alt={`QR Code for Order ${viewOrder.id}`}
                       className="w-full h-full object-contain border border-gray-300"
                     />

@@ -14,7 +14,7 @@ function createWindow() {
 
   // Dev: point to Vite/React dev server
   if (!app.isPackaged) {
-    mainWindow.loadURL("http://localhost:5173"); // change if using another port
+    mainWindow.loadURL("http://117.218.59.207:5001"); // change if using another port
   } else {
     // Prod: load built files
     mainWindow.loadFile(path.join(__dirname, "dist/index.html"));

@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // --- Backend BASE URL ---
-const BASE_URL = 'http://localhost:5005';
+const BASE_URL = 'http://117.218.59.207:5001';
 
 // --- API Functions ---
 const apiFetch = async (url: string, options: RequestInit = {}) => {

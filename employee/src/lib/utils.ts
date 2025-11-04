@@ -1,5 +1,5 @@
 export const fetchUsers = async () => {
-  const res = await fetch("http://localhost:5005/api/users/");
+  const res = await fetch("http://117.218.59.207:5001/api/users/");
   return res.json();
 };
 
@@ -10,7 +10,7 @@ export function cn(...classes: (string | undefined | false | null)[]) {
 
 
 export const addUser = async (name: string, email: string) => {
-  const res = await fetch("http://localhost:5005/api/users/", {
+  const res = await fetch("http://117.218.59.207:5001/api/users/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email }),

@@ -43,7 +43,7 @@ export function fetchDeliveries() {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 3, , 4]);
-                    return [4 /*yield*/, fetch("http://localhost:5000/api/deliveries")];
+                    return [4 /*yield*/, fetch("http://117.218.59.207:5001/api/deliveries")];
                 case 1:
                     res = _a.sent();
                     if (!res.ok)

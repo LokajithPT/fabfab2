@@ -975,5 +975,5 @@ def init_db_command():
 if __name__ == "__main__":
     with app.app_context():
         ensure_db()
-    app.run(port=5005, debug=True)
+    app.run(host='0.0.0.0' , port=5001)
 

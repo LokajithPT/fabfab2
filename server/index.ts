@@ -26,6 +26,6 @@ app.get("*", (_req, res) => {
 // START SERVER
 // ----------------------------
 app.listen(PORT, () => {
-  console.log(`Frontend server running at http://localhost:${PORT}`);
+  console.log(`Frontend server running at http://117.218.59.207:5001:${PORT}`);
 });
 

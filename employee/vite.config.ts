@@ -10,15 +10,14 @@ export default defineConfig({
   server: {
     proxy: {
       '/employee': {
-        target: 'http://localhost:5005/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
-      '/admin': {
-        target: 'http://localhost:5005/',
+target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
        '/auth': {
-        target: 'http://localhost:5005/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
     },

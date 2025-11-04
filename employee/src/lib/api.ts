@@ -1,5 +1,5 @@
 // employee/src/lib/api.ts
-const API_BASE_URL = "http://localhost:5005"; // Temporarily changed to local Flask server
+const API_BASE_URL = "http://117.218.59.207:5001"; // Temporarily changed to local Flask server
 
 export const apiFetch = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("employee_token"); // Use employee_token

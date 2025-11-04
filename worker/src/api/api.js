@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://117.218.59.207:5001";
 export const registerScan = async (data) => {
   const res = await fetch(`${BASE_URL}/api/tracks`, {
     method: "POST",
