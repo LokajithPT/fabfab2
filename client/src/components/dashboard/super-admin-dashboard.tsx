@@ -58,6 +58,30 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+
+// Auth fetch helper (assuming it's available globally or imported)
+const authFetch = async (url: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) throw await res.json();
+  return res.json();
+};
+
+interface DashboardSummaryData {
+  totalRevenue: number;
+  totalOrders: number;
+  newCustomersLastMonth: number;
+  pendingPickups: number;
+  totalServices: number;
+  shipmentsInTransit: number;
+}
+
 // Import the dummy data
 import {
   dummyOrders,
@@ -244,227 +268,6 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <Select>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Franchises" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Franchises</SelectItem>
-            <SelectItem value="fr-1">Franchise 1</SelectItem>
-            <SelectItem value="fr-2">Franchise 2</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <Dialog
-            open={isFranchiseDialogOpen}
-            onOpenChange={setIsFranchiseDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <Landmark className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Onboard Franchise</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Add a new franchise location
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Onboard New Franchise</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSaveFranchise} className="py-4 space-y-4">
-                <div>
-                  <Label htmlFor="franchiseName">Franchise Name</Label>
-                  <Input
-                    id="franchiseName"
-                    placeholder="e.g., Downtown Central"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="franchiseLocation">Location</Label>
-                  <Input
-                    id="franchiseLocation"
-                    placeholder="e.g., 123 Main St, Anytown"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="ownerName">Owner Name</Label>
-                  <Input id="ownerName" placeholder="e.g., John Doe" required />
-                </div>
-                <Button type="submit">Save Franchise</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-          <Dialog
-            open={isServiceDialogOpen}
-            onOpenChange={setIsServiceDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <ClipboardList className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Add New Service</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Create a new service offering
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Service</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSaveService} className="py-4 space-y-4">
-                <div>
-                  <Label htmlFor="serviceName">Service Name</Label>
-                  <Input
-                    id="serviceName"
-                    placeholder="e.g., Premium Dry Cleaning"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="serviceCategory">Category</Label>
-                  <Input
-                    id="serviceCategory"
-                    placeholder="e.g., Dry Cleaning"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="servicePrice">Price</Label>
-                  <Input
-                    id="servicePrice"
-                    type="number"
-                    placeholder="e.g., 250.00"
-                    required
-                  />
-                </div>
-                <Button type="submit">Save Service</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <Building className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Manage Franchises</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Oversee franchise operations
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Manage Franchises</DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <Input placeholder="Search franchises..." className="mb-4" />
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {franchiseDetailsData.map((franchise) => (
-                      <TableRow key={franchise.name}>
-                        <TableCell className="font-medium">
-                          {franchise.name}
-                        </TableCell>
-                        <TableCell>{franchise.status}</TableCell>
-                        <TableCell className="text-right">
-                          <Link to={`/analytics?franchise=${franchise.name}`}>
-                            <Button>View</Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Dialog
-            open={isReportDialogOpen}
-            onOpenChange={setIsReportDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <FileText className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Generate Report</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Create and export reports
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Generate Report</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleGenerateReport} className="py-4 space-y-4">
-                <div>
-                  <Label htmlFor="reportType">Report Type</Label>
-                  <Select>
-                    <SelectTrigger id="reportType">
-                      <SelectValue placeholder="Select a report type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sales">Sales Report</SelectItem>
-                      <SelectItem value="revenue">Revenue Report</SelectItem>
-                      <SelectItem value="customers">Customer Report</SelectItem>
-                      <SelectItem value="inventory">
-                        Inventory Report
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="dateRange">Date Range</Label>
-                  <Input id="dateRange" type="date" required />
-                </div>
-                <div>
-                  <Label htmlFor="format">Format</Label>
-                  <Select>
-                    <SelectTrigger id="format">
-                      <SelectValue placeholder="Select a format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="xlsx">XLSX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit">Generate</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <KpiCard

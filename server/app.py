@@ -864,6 +864,29 @@ def get_customers():
 
     return jsonify(customers_data), 200
 
+@app.route("/admin/api/dashboard-summary", methods=["GET"])
+@admin_login_required
+def get_dashboard_summary():
+    total_revenue = db.session.query(db.func.sum(Order.total)).scalar() or 0
+    total_orders = db.session.query(db.func.count(Order.id)).scalar() or 0
+    new_customers_last_month = db.session.query(Customer).filter(Customer.created_at >= (datetime.utcnow() - timedelta(days=30))).count()
+    pending_pickups = db.session.query(Order).filter_by(status="At Store").count() # Assuming 'At Store' means pending pickup
+    total_services = db.session.query(Service).count()
+    shipments_in_transit = db.session.query(TransitBatch).filter_by(status="IN_TRANSIT").count()
+    active_stores = 12 # Placeholder, as store concept is not fully defined in models
+    on_time_delivery_rate = 98.2 # Placeholder
+    washing_capacity = 85 # Placeholder
+
+    return jsonify({
+        "totalRevenue": total_revenue,
+        "totalOrders": total_orders,
+        "newCustomersLastMonth": new_customers_last_month,
+        "pendingPickups": pending_pickups,
+        "totalServices": total_services,
+        "shipmentsInTransit": shipments_in_transit,
+    }), 200
+
+
 @app.route("/api/customers/public", methods=["GET"])
 def get_customers_public():
     return jsonify([c.to_dict() for c in Customer.query.all()])
