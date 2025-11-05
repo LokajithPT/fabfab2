@@ -175,3 +175,14 @@ export type TransitOrderItem = typeof transitOrderItems.$inferSelect;
 
 export type InsertTransitStatusHistory = z.infer<typeof insertTransitStatusHistorySchema>;
 export type TransitStatusHistory = typeof transitStatusHistory.$inferSelect;
+
+// Custom Service Interface to match Flask-SQLAlchemy model
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: string;
+  category?: string; // Make category optional as it might not always be present
+  status: string;
+  usage_count: number;
+}

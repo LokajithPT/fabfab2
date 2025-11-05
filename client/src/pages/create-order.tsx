@@ -14,12 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-
-type Service = {
-  id: string;
-  name: string;
-  price: string;
-};
+import type { Service } from "@shared/schema";
 
 // Auth fetch helper
 const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -45,6 +40,13 @@ export default function CreateOrder() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState(""); // New state for search term
+  const [extraCharges, setExtraCharges] = useState<number>(0);
+  const [extraChargesNote, setExtraChargesNote] = useState<string>("");
+  const [discountType, setDiscountType] = useState<"percentage" | "amount" | "none">("none");
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [advancePayment, setAdvancePayment] = useState<number>(0);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,6 +55,13 @@ export default function CreateOrder() {
     queryKey: ["/api/services"],
     queryFn: () => authFetch("/api/services"),
   });
+
+  // Filter services based on search term
+  const filteredServices = services?.filter(
+    (service) =>
+      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (service.category && service.category.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const handleServiceChange = (serviceId: string) => {
     setSelectedServices((prev) =>
@@ -81,13 +90,8 @@ export default function CreateOrder() {
       return;
     }
 
-    const total = selectedServiceDetails
-      ? selectedServiceDetails.reduce((acc, s) => acc + parseFloat(s.price), 0)
-      : 0;
-
     // Get service names for comma-separated string
-    const serviceNames = selectedServiceDetails?.map((s) => s.name) || [];
-    const serviceNamesString = serviceNames.join(", ");
+    const serviceNames = selectedServiceDetails?.map((s) => s.name).join(", ") || "";
 
     // Payload with both serviceIds array and service names as comma-separated string
     const payload = {
@@ -96,10 +100,16 @@ export default function CreateOrder() {
       customerPhone,
       serviceIds: selectedServices, // Keep as array for backend processing
       serviceId: selectedServices.join(","), // Comma-separated IDs if needed
-      service: serviceNamesString, // Comma-separated service names
+      service: serviceNames, // Comma-separated service names
       pickupDate,
       specialInstructions,
-      total,
+      total: finalTotalDisplay, // Use the calculated finalTotalDisplay
+      extraCharges,
+      extraChargesNote,
+      discountType,
+      discountValue,
+      couponCode,
+      advancePayment,
     };
 
     try {
@@ -125,7 +135,7 @@ export default function CreateOrder() {
 
       toast({
         title: "Success",
-        description: `Order created successfully! Services: ${serviceNamesString}`,
+        description: `Order created successfully! Services: ${serviceNames}`,
       });
     } catch (err: any) {
       toast({
@@ -133,6 +143,7 @@ export default function CreateOrder() {
         description: err.error || "Failed to create order",
         variant: "destructive",
       });
+      return; // <--- Add this return statement
     }
   };
 
@@ -155,9 +166,21 @@ export default function CreateOrder() {
     }
   };
 
-  const total = selectedServiceDetails
+  // Calculate subtotal for display
+  const subtotalDisplay = selectedServiceDetails
     ? selectedServiceDetails.reduce((acc, s) => acc + parseFloat(s.price), 0)
     : 0;
+
+  // Apply discount for display
+  let discountedTotalDisplay = subtotalDisplay;
+  if (discountType === "percentage") {
+    discountedTotalDisplay = subtotalDisplay * (1 - discountValue / 100);
+  } else if (discountType === "amount") {
+    discountedTotalDisplay = subtotalDisplay - discountValue;
+  }
+
+  // Add extra charges for display
+  const finalTotalDisplay = discountedTotalDisplay + extraCharges;
 
   return (
     <div className="p-4 md:p-6 lg:p-8 animate-fade-in">
@@ -233,15 +256,22 @@ export default function CreateOrder() {
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <Label>Select Services *</Label>
+                <Input
+                  type="text"
+                  placeholder="Search services by name or category..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="mb-4"
+                />
                 <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-3">
                   {isLoading ? (
                     <p className="text-muted-foreground">Loading services...</p>
-                  ) : services?.length === 0 ? (
+                  ) : filteredServices?.length === 0 ? (
                     <p className="text-muted-foreground">
-                      No services available
+                      No services available or matching your search
                     </p>
                   ) : (
-                    services?.map((service) => (
+                    filteredServices?.map((service) => (
                       <div
                         key={service.id}
                         className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
@@ -258,7 +288,9 @@ export default function CreateOrder() {
                           className="flex-1 text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                           <div className="flex justify-between items-center">
-                            <span>{service.name}</span>
+                            <span>
+                              {service.name}{service.category ? ` / ${service.category}` : ''}
+                            </span>
                             <span className="text-green-600 font-semibold">
                               ₹{parseFloat(service.price).toFixed(2)}
                             </span>
@@ -322,14 +354,85 @@ export default function CreateOrder() {
                       </div>
                     ))}
                   </div>
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between items-center font-bold text-lg">
-                      <span>Total</span>
-                      <span className="text-green-600">
-                        ₹{total.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm">Subtotal</span>
+                  <span className="text-sm font-medium">
+                    ₹{subtotalDisplay.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Extra Charges */}
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="extraCharges">Extra Charges</Label>
+                  <Input
+                    id="extraCharges"
+                    type="number"
+                    value={extraCharges}
+                    onChange={(e) => setExtraCharges(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                  />
+                  <Input
+                    id="extraChargesNote"
+                    value={extraChargesNote}
+                    onChange={(e) => setExtraChargesNote(e.target.value)}
+                    placeholder="Reason for extra charges (optional)"
+                  />
+                </div>
+
+                {/* Discount */}
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="discountType">Discount</Label>
+                  <select
+                    id="discountType"
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as "percentage" | "amount" | "none")}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="none">No Discount</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Fixed Amount</option>
+                  </select>
+                  {discountType !== "none" && (
+                    <Input
+                      type="number"
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                      placeholder={discountType === "percentage" ? "e.g., 10 for 10%" : "e.g., 50 for ₹50"}
+                    />
+                  )}
+                </div>
+
+                {/* Coupon */}
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="couponCode">Coupon Code</Label>
+                  <Input
+                    id="couponCode"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Enter coupon code (optional)"
+                  />
+                </div>
+
+                {/* Advance Payment */}
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="advancePayment">Advance Payment</Label>
+                  <Input
+                    id="advancePayment"
+                    type="number"
+                    value={advancePayment}
+                    onChange={(e) => setAdvancePayment(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="flex justify-between items-center font-bold text-lg mt-4">
+                  <span>Total</span>
+                  <span className="text-green-600">
+                    ₹{finalTotalDisplay.toFixed(2)}
+                  </span>
+                </div>
+              </div>
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -465,7 +568,7 @@ export default function CreateOrder() {
                   </p>
                 )}
                 <p className="text-sm print:text-base font-semibold">
-                  Total: ₹{total.toFixed(2)}
+                  Total: ₹{finalTotalDisplay.toFixed(2)}
                 </p>
               </div>
 

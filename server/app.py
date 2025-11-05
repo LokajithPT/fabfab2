@@ -121,6 +121,7 @@ class Service(db.Model):
     name = db.Column(db.String(120), nullable=False)
     price = db.Column(db.Float, nullable=False)
     duration = db.Column(db.String(50))
+    category = db.Column(db.String(100)) # New category column
     status = db.Column(db.String(50), default="Active")
     usage_count = db.Column(db.Integer, default=0)
 
@@ -130,6 +131,7 @@ class Service(db.Model):
             "name": self.name,
             "price": self.price,
             "duration": self.duration,
+            "category": self.category,
             "status": self.status,
             "usage_count": self.usage_count,
         }
@@ -946,15 +948,6 @@ def serve_admin(path):
 def ensure_db():
     """Internal function to create and seed the database."""
     db.create_all()
-
-    # seed services if none exist
-    if not Service.query.first():
-        db.session.add_all([
-            Service(id="s1", name="Laundry", price=200, duration="24h"),
-            Service(id="s2", name="Dry Cleaning", price=300, duration="48h"),
-            Service(id="s3", name="Ironing", price=100, duration="12h"),
-        ])
-        db.session.commit()
 
     # seed a default worker if none exist
     if not Worker.query.first():
