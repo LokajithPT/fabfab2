@@ -157,6 +157,8 @@ class Customer(db.Model):
             "email": self.email,
             "phone": self.phone,
             "createdAt": self.created_at.isoformat(),
+            "totalOrders": getattr(self, 'total_orders', 0),  # Will be populated by query
+            "totalSpent": getattr(self, 'total_spent', 0.0),  # Will be populated by query
         }
 
 class Order(db.Model):
@@ -847,7 +849,20 @@ def delete_service(service_id):
 @app.route("/admin/api/customers", methods=["GET"])
 @admin_login_required
 def get_customers():
-    return jsonify([c.to_dict() for c in Customer.query.all()])
+    customers_query = db.session.query(Customer, 
+                                       db.func.count(Order.id).label('total_orders'), 
+                                       db.func.sum(Order.total).label('total_spent')) \
+                               .outerjoin(Order, Customer.email == Order.customer_email) \
+                               .group_by(Customer.id) \
+                               .all()
+
+    customers_data = []
+    for customer, total_orders, total_spent in customers_query:
+        customer.total_orders = total_orders
+        customer.total_spent = total_spent if total_spent is not None else 0.0
+        customers_data.append(customer.to_dict())
+
+    return jsonify(customers_data), 200
 
 @app.route("/api/customers/public", methods=["GET"])
 def get_customers_public():

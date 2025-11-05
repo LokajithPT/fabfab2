@@ -391,12 +391,10 @@ export default function Customers() {
       if (!res.ok) throw await res.json();
       const data = await res.json();
 
-      // Add some mock data for better demo
+      // Remove mock data generation for totalOrders and totalSpent
       const enhancedData = data.map((customer: Customer) => ({
         ...customer,
         status: customer.status || "active",
-        totalOrders: customer.totalOrders || Math.floor(Math.random() * 20),
-        totalSpent: customer.totalSpent || Math.floor(Math.random() * 50000),
         createdAt: customer.createdAt || new Date().toISOString(),
         lastOrderDate:
           customer.lastOrderDate ||

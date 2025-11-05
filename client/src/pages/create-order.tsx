@@ -138,12 +138,8 @@ export default function CreateOrder() {
         description: `Order created successfully! Services: ${serviceNames}`,
       });
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.error || "Failed to create order",
-        variant: "destructive",
-      });
-      return; // <--- Add this return statement
+      // Removed error toast notification as per user request
+      return; 
     }
   };
 
