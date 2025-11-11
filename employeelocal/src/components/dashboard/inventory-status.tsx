@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ interface ServiceStatus {
 }
 
 export default function ServiceStatus() {
-  // Mock service data for dry cleaning services
+  // Static service data for dry cleaning services
   const services: ServiceStatus[] = [
     {
       id: '1',
@@ -117,7 +117,7 @@ export default function ServiceStatus() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3 sm:space-y-4">
-          {services.map((service, index) => (
+          {services.map((service) => (
             <div 
               key={service.id} 
               className="p-3 sm:p-5 rounded-lg border border-border hover:shadow-sm transition-shadow duration-200"

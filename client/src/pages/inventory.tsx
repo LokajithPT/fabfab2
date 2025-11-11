@@ -3,74 +3,296 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Plus, Package, AlertTriangle, CheckCircle, Brain, TrendingUp, Zap, Target, BarChart3, Clock, Bell } from "lucide-react";
-import { getStockStatusColor, getStockStatusText, formatCurrency } from "@/lib/data";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Search,
+  Filter,
+  Plus,
+  Package,
+  AlertTriangle,
+  CheckCircle,
+  Brain,
+  TrendingUp,
+  Zap,
+  Target,
+  BarChart3,
+  Clock,
+  Bell,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Import dummy data
-import { dummyInventory, type InventoryItem } from '@/lib/dummy-data';
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  stock: number;
+  status: "In Stock" | "Low Stock" | "Out of Stock";
+  price?: number;
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+};
 
 export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [products, setProducts] = useState<InventoryItem[]>([]);
-  const [lowStockAlerts, setLowStockAlerts] = useState<InventoryItem[]>([]);
   const { toast } = useToast();
 
-  // Use dummy data instead of API calls
+  // Comprehensive static inventory data for dry cleaning business
+  const products: InventoryItem[] = [
+    // Cleaning Solutions & Chemicals
+    {
+      id: "INV001",
+      name: "Dry Cleaning Solvent (Perc)",
+      stock: 45,
+      status: "In Stock",
+      price: 89.99,
+    },
+    {
+      id: "INV002",
+      name: "Laundry Detergent (Commercial Grade)",
+      stock: 8,
+      status: "Low Stock",
+      price: 24.99,
+    },
+    {
+      id: "INV003",
+      name: "Fabric Softener (Hypoallergenic)",
+      stock: 0,
+      status: "Out of Stock",
+      price: 12.99,
+    },
+    {
+      id: "INV004",
+      name: "Stain Remover (Heavy Duty)",
+      stock: 23,
+      status: "In Stock",
+      price: 15.99,
+    },
+    {
+      id: "INV007",
+      name: "Steam Press Fluid",
+      stock: 12,
+      status: "In Stock",
+      price: 34.99,
+    },
+    {
+      id: "INV008",
+      name: "Wet Cleaning Chemicals (Eco-Friendly)",
+      stock: 0,
+      status: "Out of Stock",
+      price: 67.99,
+    },
+    {
+      id: "INV009",
+      name: "Suede & Nubuck Cleaner",
+      stock: 18,
+      status: "In Stock",
+      price: 42.99,
+    },
+    {
+      id: "INV010",
+      name: "Leather Conditioner & Protector",
+      stock: 3,
+      status: "Low Stock",
+      price: 56.99,
+    },
+    {
+      id: "INV011",
+      name: "Delicate Wash Solution (Silk & Wool)",
+      stock: 28,
+      status: "In Stock",
+      price: 29.99,
+    },
+    {
+      id: "INV012",
+      name: "Anti-Static Spray",
+      stock: 67,
+      status: "In Stock",
+      price: 8.99,
+    },
+    {
+      id: "INV014",
+      name: "Curtain Cleaning Solution",
+      stock: 34,
+      status: "In Stock",
+      price: 45.99,
+    },
+    {
+      id: "INV015",
+      name: "Carpet & Upholstery Shampoo",
+      stock: 19,
+      status: "In Stock",
+      price: 38.99,
+    },
+
+    // Supplies & Accessories
+    {
+      id: "INV005",
+      name: "Garment Bags (Plastic)",
+      stock: 150,
+      status: "In Stock",
+      price: 3.99,
+    },
+    {
+      id: "INV006",
+      name: "Hangers (Premium Wooden)",
+      stock: 5,
+      status: "Low Stock",
+      price: 1.99,
+    },
+    {
+      id: "INV016",
+      name: "Hangers (Wire Standard)",
+      stock: 500,
+      status: "In Stock",
+      price: 0.25,
+    },
+    {
+      id: "INV017",
+      name: "Pins & Fasteners (Assorted)",
+      stock: 200,
+      status: "In Stock",
+      price: 4.99,
+    },
+    {
+      id: "INV018",
+      name: "Tags & Labels (Waterproof)",
+      stock: 85,
+      status: "In Stock",
+      price: 12.99,
+    },
+
+    // Specialized Services
+    {
+      id: "INV013",
+      name: "Wedding Dress Preservation Kit",
+      stock: 2,
+      status: "Low Stock",
+      price: 189.99,
+    },
+    {
+      id: "INV019",
+      name: "Moth Repellent Sachets",
+      stock: 45,
+      status: "In Stock",
+      price: 6.99,
+    },
+    {
+      id: "INV020",
+      name: "Odor Eliminator (Activated Charcoal)",
+      stock: 32,
+      status: "In Stock",
+      price: 18.99,
+    },
+    {
+      id: "INV021",
+      name: "Waterproofing Spray",
+      stock: 14,
+      status: "In Stock",
+      price: 22.99,
+    },
+    {
+      id: "INV022",
+      name: "Color Guard Treatment",
+      stock: 9,
+      status: "Low Stock",
+      price: 28.99,
+    },
+
+    // Equipment Maintenance
+    {
+      id: "INV023",
+      name: "Pressing Machine Oil",
+      stock: 6,
+      status: "Low Stock",
+      price: 45.99,
+    },
+    {
+      id: "INV024",
+      name: "Filter Replacements (Steam Press)",
+      stock: 12,
+      status: "In Stock",
+      price: 78.99,
+    },
+    {
+      id: "INV025",
+      name: "Cleaning Cloths (Microfiber)",
+      stock: 120,
+      status: "In Stock",
+      price: 9.99,
+    },
+  ];
+
+  // Check for low stock items
+  const lowStockAlerts = products.filter(
+    (item) => item.status === "Low Stock" || item.status === "Out of Stock",
+  );
+
+  // Show alerts for low stock items on component mount
   useEffect(() => {
-    setProducts(dummyInventory);
-    // Check for low stock items
-    const lowStock = dummyInventory.filter(item => item.status === 'Low Stock' || item.status === 'Out of Stock');
-    setLowStockAlerts(lowStock);
-    
-    // Show alerts for low stock items
-    if (lowStock.length > 0) {
-      lowStock.forEach(item => {
+    if (lowStockAlerts.length > 0) {
+      lowStockAlerts.forEach((item) => {
         toast({
           title: "Low Stock Alert",
           description: `${item.name} is ${item.status.toLowerCase()}. Current stock: ${item.stock}`,
-          variant: item.status === 'Out of Stock' ? 'destructive' : 'default',
+          variant: item.status === "Out of Stock" ? "destructive" : "default",
         });
       });
     }
-  }, [toast]);
+  }, [toast, lowStockAlerts]);
 
-  const filteredProducts = products?.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
     let matchesStatus = true;
     if (statusFilter === "in_stock") {
-      matchesStatus = product.status === 'In Stock';
+      matchesStatus = product.status === "In Stock";
     } else if (statusFilter === "low_stock") {
-      matchesStatus = product.status === 'Low Stock';
+      matchesStatus = product.status === "Low Stock";
     } else if (statusFilter === "out_of_stock") {
-      matchesStatus = product.status === 'Out of Stock';
+      matchesStatus = product.status === "Out of Stock";
     }
-    
-    return matchesSearch && matchesStatus;
-  }) || [];
 
-  const inventoryStats = products?.reduce((acc, product) => {
-    const totalValue = acc.totalValue + (product.stock * 100); // Mock price calculation
-    if (product.status === 'Out of Stock') {
-      acc.outOfStock++;
-    } else if (product.status === 'Low Stock') {
-      acc.lowStock++;
-    } else {
-      acc.inStock++;
-    }
-    return { ...acc, totalValue };
-  }, { inStock: 0, lowStock: 0, outOfStock: 0, totalValue: 0 }) || { inStock: 0, lowStock: 0, outOfStock: 0, totalValue: 0 };
+    return matchesSearch && matchesStatus;
+  });
+
+  const inventoryStats = products.reduce(
+    (acc, product) => {
+      const totalValue =
+        acc.totalValue + product.stock * (product.price || 100);
+      if (product.status === "Out of Stock") {
+        acc.outOfStock++;
+      } else if (product.status === "Low Stock") {
+        acc.lowStock++;
+      } else {
+        acc.inStock++;
+      }
+      return { ...acc, totalValue };
+    },
+    { inStock: 0, lowStock: 0, outOfStock: 0, totalValue: 0 },
+  );
 
   // Add a function to manually trigger low stock alerts
   const triggerLowStockAlerts = () => {
     if (lowStockAlerts.length > 0) {
-      lowStockAlerts.forEach(item => {
+      lowStockAlerts.forEach((item) => {
         toast({
           title: "Low Stock Alert",
           description: `${item.name} is ${item.status.toLowerCase()}. Current stock: ${item.stock}`,
-          variant: item.status === 'Out of Stock' ? 'destructive' : 'default',
+          variant: item.status === "Out of Stock" ? "destructive" : "default",
         });
       });
     } else {
@@ -91,31 +313,39 @@ export default function Inventory() {
           </div>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="font-display font-bold text-3xl text-foreground">Inventory Intelligence</h1>
+              <h1 className="font-display font-bold text-3xl text-foreground">
+                Inventory Intelligence
+              </h1>
               <div className="status-indicator-enhanced bg-green-500"></div>
               <span className="text-sm text-muted-foreground">AI Active</span>
             </div>
-            <p className="text-muted-foreground">Predictive analytics and intelligent stock management</p>
+            <p className="text-muted-foreground">
+              Predictive analytics and intelligent stock management
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             data-testid="ai-insights"
             onClick={() => {
               console.log("Opening AI insights...");
-              alert("AI Insights feature coming soon! This would show predictive analytics, demand forecasting, and intelligent recommendations.");
+              alert(
+                "AI Insights feature coming soon! This would show predictive analytics, demand forecasting, and intelligent recommendations.",
+              );
             }}
           >
             <Zap className="w-4 h-4 mr-2" />
             AI Insights
           </Button>
-          <Button 
+          <Button
             data-testid="add-product"
             onClick={() => {
               console.log("Adding new product...");
               // Using toast instead of alert for better UX
-              console.log("Product creation feature coming soon! This would open a modal to add a new product.");
+              console.log(
+                "Product creation feature coming soon! This would open a modal to add a new product.",
+              );
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -133,8 +363,8 @@ export default function Inventory() {
                 <Bell className="h-5 w-5" />
                 Low Stock Alerts ({lowStockAlerts.length})
               </CardTitle>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={triggerLowStockAlerts}
                 className="border-orange-300 text-orange-700 hover:bg-orange-100"
@@ -147,17 +377,22 @@ export default function Inventory() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {lowStockAlerts.map((item) => (
-                <div key={item.id} className="p-3 bg-white rounded-lg border border-orange-200">
+                <div
+                  key={item.id}
+                  className="p-3 bg-white rounded-lg border border-orange-200"
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-900">{item.name}</p>
-                      <p className="text-sm text-gray-600">Stock: {item.stock}</p>
+                      <p className="text-sm text-gray-600">
+                        Stock: {item.stock}
+                      </p>
                     </div>
-                    <Badge 
+                    <Badge
                       className={
-                        item.status === 'Out of Stock' 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-orange-100 text-orange-800'
+                        item.status === "Out of Stock"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-orange-100 text-orange-800"
                       }
                     >
                       {item.status}
@@ -180,8 +415,12 @@ export default function Inventory() {
                   <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground">Demand Forecast</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Next 30 days prediction</p>
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                    Demand Forecast
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Next 30 days prediction
+                  </p>
                 </div>
               </div>
               <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs sm:text-sm">
@@ -190,7 +429,9 @@ export default function Inventory() {
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Dry Cleaning Services</span>
+                <span className="text-sm text-muted-foreground">
+                  Dry Cleaning Services
+                </span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="w-4/5 h-full bg-blue-500 rounded-full"></div>
@@ -199,7 +440,9 @@ export default function Inventory() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Laundry Detergents</span>
+                <span className="text-sm text-muted-foreground">
+                  Laundry Detergents
+                </span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="w-3/5 h-full bg-green-500 rounded-full"></div>
@@ -208,7 +451,9 @@ export default function Inventory() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Fabric Softeners</span>
+                <span className="text-sm text-muted-foreground">
+                  Fabric Softeners
+                </span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="w-2/5 h-full bg-yellow-500 rounded-full"></div>
@@ -220,29 +465,44 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        <Card className="bento-card animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        <Card
+          className="bento-card animate-fade-in"
+          style={{ animationDelay: "0.1s" }}
+        >
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-lg flex items-center justify-center">
                 <Target className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-semibold text-foreground">Restock Alerts</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">AI recommendations</p>
+                <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                  Restock Alerts
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  AI recommendations
+                </p>
               </div>
             </div>
             <div className="space-y-2 sm:space-y-3">
               <div className="flex items-center justify-between p-2 sm:p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400">Critical</p>
-                  <p className="text-xs text-red-600 dark:text-red-500">3 items need restocking</p>
+                  <p className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400">
+                    Critical
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-500">
+                    3 items need restocking
+                  </p>
                 </div>
                 <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
               </div>
               <div className="flex items-center justify-between p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-yellow-700 dark:text-yellow-400">Warning</p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-500">5 items low stock</p>
+                  <p className="text-xs sm:text-sm font-medium text-yellow-700 dark:text-yellow-400">
+                    Warning
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-500">
+                    5 items low stock
+                  </p>
                 </div>
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500" />
               </div>
@@ -257,7 +517,9 @@ export default function Inventory() {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Value</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Total Value
+                </p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-display font-bold text-foreground">
                   {formatCurrency(inventoryStats.totalValue)}
                 </p>
@@ -266,12 +528,14 @@ export default function Inventory() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bento-card">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">In Stock</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  In Stock
+                </p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-display font-bold text-foreground">
                   {inventoryStats.inStock}
                 </p>
@@ -280,12 +544,14 @@ export default function Inventory() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bento-card">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Low Stock</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Low Stock
+                </p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-display font-bold text-foreground">
                   {inventoryStats.lowStock}
                 </p>
@@ -294,12 +560,14 @@ export default function Inventory() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bento-card">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Out of Stock</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Out of Stock
+                </p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-display font-bold text-foreground">
                   {inventoryStats.outOfStock}
                 </p>
@@ -348,33 +616,42 @@ export default function Inventory() {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => (
-                <TableRow key={product.id} data-testid={`product-row-${product.id}`}>
+                <TableRow
+                  key={product.id}
+                  data-testid={`product-row-${product.id}`}
+                >
                   <TableCell>
                     <div>
                       <p className="font-medium">{product.name}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{product.id}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {product.id}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{product.stock}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge 
+                    <Badge
                       className={
-                        product.status === 'In Stock' 
-                          ? 'bg-green-100 text-green-800' 
-                          : product.status === 'Low Stock'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-red-100 text-red-800'
+                        product.status === "In Stock"
+                          ? "bg-green-100 text-green-800"
+                          : product.status === "Low Stock"
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-red-100 text-red-800"
                       }
                     >
                       {product.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm" data-testid={`edit-product-${product.id}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid={`edit-product-${product.id}`}
+                    >
                       Edit
                     </Button>
                   </TableCell>

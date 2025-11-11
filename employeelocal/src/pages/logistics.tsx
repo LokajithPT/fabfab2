@@ -15,9 +15,45 @@ import {
   Package,
   Users
 } from "lucide-react";
-import { getStatusColor, formatCurrency } from "@/lib/data";
-import { format, formatDistanceToNow } from "date-fns";
-import type { Delivery, Order } from "@shared/schema";
+// Helper functions moved inline due to lib/data deletion
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+    case "in_transit": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+    case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    case "failed": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+  }
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+import { format } from "date-fns";
+
+// Define types inline since shared schema might have import issues
+interface Delivery {
+  id: string;
+  orderId: string;
+  vehicleId: string;
+  driverName: string;
+  status: "pending" | "in_transit" | "delivered" | "failed";
+  estimatedDelivery?: string;
+  actualDelivery?: string;
+  location?: { lat: number; lng: number };
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  totalAmount: string;
+}
 
 export default function Logistics() {
   const { data: deliveries, isLoading: deliveriesLoading } = useQuery<Delivery[]>({
@@ -263,7 +299,7 @@ export default function Logistics() {
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                             <span className="text-xs text-primary-foreground font-medium">
-                              {driverName.split(' ').map(n => n[0]).join('')}
+                              {driverName.split(' ').map((n: string) => n[0]).join('')}
                             </span>
                           </div>
                           <div>

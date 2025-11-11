@@ -82,14 +82,30 @@ interface DashboardSummaryData {
   shipmentsInTransit: number;
 }
 
-// Import the dummy data
-import {
-  dummyOrders,
-  dummySalesData,
-  dummyOrderStatusData,
-  dummyServicePopularityData,
-  dummyCustomers,
-} from "@/lib/dummy-data";
+// Enhanced admin fetch with better error handling
+const adminFetch = async (url: string, options: RequestInit = {}) => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("Network error. Please check your connection.");
+    }
+    throw error;
+  }
+};
 
 const revenueData = [
   { name: "Week 1", revenue: 4000 },
@@ -237,12 +253,9 @@ export default function SuperAdminDashboard() {
     queryFn: () => authFetch("/admin/api/services"),
   });
 
-  // Use real data or fallback to dummy
-  const totalRevenue = dashboardData?.totalRevenue || dummySalesData.reduce(
-    (acc, item) => acc + item.revenue,
-    0,
-  );
-  const totalOrders = realOrders?.length || dummyOrders.length;
+  // Use real data with proper fallbacks
+  const totalRevenue = dashboardData?.totalRevenue || 0;
+  const totalOrders = realOrders?.length || 0;
   const newCustomers = realCustomers?.filter((customer: any) => {
     const joinDate = new Date(customer.joinDate || customer.created_at);
     const currentDate = new Date();
@@ -252,16 +265,7 @@ export default function SuperAdminDashboard() {
       currentDate.getDate(),
     );
     return joinDate >= oneMonthAgo;
-  }).length || dummyCustomers.filter((customer) => {
-    const joinDate = new Date(customer.joinDate);
-    const currentDate = new Date();
-    const oneMonthAgo = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1,
-      currentDate.getDate(),
-    );
-    return joinDate >= oneMonthAgo;
-  }).length;
+  }).length || 0;
 
   const handleSaveFranchise = (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,7 +317,7 @@ export default function SuperAdminDashboard() {
                 Monthly Revenue Trend
               </h4>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={dummySalesData}>
+                <LineChart data={dashboardData?.salesData || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
@@ -364,7 +368,7 @@ export default function SuperAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                  <TableBody>
-                   {(realOrders?.slice(0, 5) || dummyOrders.slice(0, 5)).map((order: any) => (
+                   {(realOrders?.slice(0, 5) || []).map((order: any) => (
                      <TableRow key={order.id}>
                        <TableCell className="font-medium">{order.id}</TableCell>
                        <TableCell>{order.customer_name || order.customerName}</TableCell>
@@ -413,7 +417,7 @@ export default function SuperAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(dashboardData?.servicePopularityData || dummyServicePopularityData).slice(0, 5).map((service: any) => (
+                  {(dashboardData?.servicePopularityData || []).slice(0, 5).map((service: any) => (
                     <TableRow key={service.name}>
                       <TableCell className="font-medium">
                         {service.name}
@@ -538,7 +542,7 @@ export default function SuperAdminDashboard() {
             <CardTitle>Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <SalesChart data={dashboardData?.salesData || dummySalesData} />
+            <SalesChart data={dashboardData?.salesData || []} />
           </CardContent>
         </Card>
         <Card
@@ -549,15 +553,15 @@ export default function SuperAdminDashboard() {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentOrders orders={(realOrders?.slice(0, 5) || dummyOrders.slice(0, 5))} />
+            <RecentOrders orders={(realOrders?.slice(0, 5) || [])} />
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <OrderStatusChart data={dashboardData?.orderStatusData || dummyOrderStatusData} />
+        <OrderStatusChart data={dashboardData?.orderStatusData || []} />
         <FranchisePerformance />
-        <ServicePopularityChart data={dashboardData?.servicePopularityData || dummyServicePopularityData} />
+        <ServicePopularityChart data={dashboardData?.servicePopularityData || []} />
         <Card>
           <CardHeader>
             <CardTitle>Consolidated Payroll</CardTitle>

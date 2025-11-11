@@ -1,18 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
-import { formatCurrency } from "@/lib/data";
-import type { PosTransaction } from "@shared/schema";
+// Helper function moved inline due to lib/data deletion
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+// Define types inline since shared schema might have import issues
+interface PosTransaction {
+  id: string;
+  totalAmount: string;
+  createdAt: string;
+}
 
 export default function OrderSummary() {
   const { data: transactions, isLoading } = useQuery<PosTransaction[]>({
     queryKey: ["/api/pos/transactions"],
   });
 
-  const { data: metrics } = useQuery({
-    queryKey: ["/api/dashboard/metrics"],
-  });
+
 
   const todayTransactions = transactions?.filter(transaction => {
     const today = new Date();

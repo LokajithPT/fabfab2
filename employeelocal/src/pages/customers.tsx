@@ -377,18 +377,14 @@ export default function Customers() {
       if (!res.ok) throw await res.json();
       const data = await res.json();
 
-      // Add some mock data for better demo
+      // Use real data without mock generation
       const enhancedData = data.map((customer: Customer) => ({
         ...customer,
         status: customer.status || "active",
-        totalOrders: customer.totalOrders || Math.floor(Math.random() * 20),
-        totalSpent: customer.totalSpent || Math.floor(Math.random() * 50000),
+        totalOrders: customer.totalOrders || 0,
+        totalSpent: customer.totalSpent || 0,
         createdAt: customer.createdAt || new Date().toISOString(),
-        lastOrderDate:
-          customer.lastOrderDate ||
-          new Date(
-            Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
+        lastOrderDate: customer.lastOrderDate || null,
       }));
 
       setCustomers(enhancedData);

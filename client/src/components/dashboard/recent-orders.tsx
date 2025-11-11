@@ -1,39 +1,30 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatCurrency } from "@/lib/data";
+import { useState, useEffect } from "react";
 
-// NOTE: We'll use static data for now. We will reconnect this to the API later.
-const RECENT_ORDERS_DATA = [
-  {
-    name: "Olivia Martin",
-    email: "olivia.martin@email.com",
-    avatar: "/avatars/01.png",
-    totalAmount: 1999.00,
-  },
-  {
-    name: "Jackson Lee",
-    email: "jackson.lee@email.com",
-    avatar: "/avatars/02.png",
-    totalAmount: 39.00,
-  },
-  {
-    name: "Isabella Nguyen",
-    email: "isabella.nguyen@email.com",
-    avatar: "/avatars/03.png",
-    totalAmount: 299.00,
-  },
-  {
-    name: "William Kim",
-    email: "will@email.com",
-    avatar: "/avatars/04.png",
-    totalAmount: 99.00,
-  },
-  {
-    name: "Sofia Davis",
-    email: "sofia.davis@email.com",
-    avatar: "/avatars/05.png",
-    totalAmount: 39.00,
-  },
-];
+// Enhanced admin fetch with better error handling
+const adminFetch = async (url: string, options: RequestInit = {}) => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("Network error. Please check your connection.");
+    }
+    throw error;
+  }
+};
 
 interface Order {
   id: string;
@@ -49,21 +40,56 @@ interface RecentOrdersProps {
 }
 
 export default function RecentOrders({ orders }: RecentOrdersProps) {
-  const displayOrders = orders || RECENT_ORDERS_DATA.map((order, i) => ({
-    id: `ORD${i + 1}`,
-    customerName: order.name,
-    date: new Date().toISOString().split('T')[0],
-    status: 'Completed' as const,
-    total: order.totalAmount,
-    service: 'Dry Cleaning'
-  }));
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecentOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await adminFetch('/api/orders/recent');
+        setRecentOrders(response);
+      } catch (err) {
+        console.error('Failed to fetch recent orders:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load recent orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!orders) {
+      fetchRecentOrders();
+    }
+  }, [orders]);
+
+  const displayOrders = orders || recentOrders;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  if (loading && !orders) {
+    return <div className="space-y-8">Loading recent orders...</div>;
+  }
+
+  if (error && !orders) {
+    return <div className="space-y-8 text-red-500">Error: {error}</div>;
+  }
+
+  if (!displayOrders || displayOrders.length === 0) {
+    return <div className="space-y-8">No recent orders found.</div>;
+  }
 
   return (
     <div className="space-y-8">
       {displayOrders.map((order, i) => (
         <div key={order.id || i} className="flex items-center">
           <Avatar className="h-9 w-9">
-            <AvatarFallback>{order.customerName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            <AvatarFallback>{order.customerName.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">{order.customerName}</p>

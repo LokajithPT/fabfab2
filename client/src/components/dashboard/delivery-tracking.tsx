@@ -4,9 +4,28 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Truck } from "lucide-react";
-import { getStatusColor } from "@/lib/data";
 import { format } from "date-fns";
-import type { Delivery } from "@shared/schema";
+
+// Helper function moved inline due to lib/data deletion
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+    case "in_transit": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+    case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    case "failed": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+  }
+};
+
+// Define types inline since shared schema might have import issues
+interface Delivery {
+  id: string;
+  vehicleId: string;
+  driverName: string;
+  status: "pending" | "in_transit" | "delivered" | "failed";
+  estimatedDelivery?: string;
+  actualDelivery?: string;
+}
 
 export default function DeliveryTracking() {
   const { data: deliveries, isLoading } = useQuery<Delivery[]>({

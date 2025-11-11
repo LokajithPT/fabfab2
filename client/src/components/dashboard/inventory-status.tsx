@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,7 @@ interface ServiceStatus {
 }
 
 export default function ServiceStatus() {
-  // Mock service data for dry cleaning services
+  // Static service data for dry cleaning services
   const services: ServiceStatus[] = [
     {
       id: '1',

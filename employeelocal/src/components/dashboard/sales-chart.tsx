@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { SAMPLE_SALES_DATA } from "@/lib/data";
+// Default sample data moved inline due to lib/data deletion
+const SAMPLE_SALES_DATA = [
+  { month: "Jan", revenue: 40000 },
+  { month: "Feb", revenue: 30000 },
+  { month: "Mar", revenue: 50000 },
+  { month: "Apr", revenue: 45000 },
+  { month: "May", revenue: 60000 },
+  { month: "Jun", revenue: 55000 },
+];
 
 interface SalesChartProps {
   data?: Array<{ month: string; revenue: number }>;
