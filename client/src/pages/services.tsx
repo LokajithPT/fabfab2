@@ -114,6 +114,20 @@ export default function Services() {
     setNewService({ name: "", price: "", duration: "", category: "" })
   }
 
+  const handleSaveEdit = () => {
+    if (!selectedService) return
+    updateMutation.mutate({
+      id: selectedService.id,
+      updates: {
+        name: selectedService.name,
+        price: selectedService.price,
+        duration: selectedService.duration,
+        category: selectedService.category,
+      },
+    })
+    setIsEditDialogOpen(false)
+  }
+
   return (
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <Card>

@@ -13,10 +13,15 @@ export default defineConfig({
         target: 'http://localhost:5001/',
         changeOrigin: true,
       },
-target: 'http://localhost:5001/',
+      '/api': {
+        target: 'http://localhost:5001/',
         changeOrigin: true,
       },
-       '/auth': {
+      '/qr': {
+        target: 'http://localhost:5001/',
+        changeOrigin: true,
+      },
+      '/auth': {
         target: 'http://localhost:5001/',
         changeOrigin: true,
       },

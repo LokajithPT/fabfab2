@@ -16,18 +16,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant={role === "super-admin" ? "default" : "outline"}
-          onClick={() => setRole("super-admin")}
-        ></Button>
-        <Button
-          variant={role === "franchise-owner" ? "default" : "outline"}
-          onClick={() => setRole("franchise-owner")}
-        >
-          Welcome To FabZ
-        </Button>
-      </div>
       {renderDashboard()}
     </div>
   );

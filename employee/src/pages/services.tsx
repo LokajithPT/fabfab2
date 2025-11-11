@@ -97,7 +97,7 @@ export default function Services() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/admin/api/services"] }),
   })
 
-  const [newService, setNewService] = useState({ name: "", price: "", duration: "" })
+  const [newService, setNewService] = useState({ name: "", price: "", duration: "", category: "" })
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
@@ -110,7 +110,7 @@ export default function Services() {
       status: "Active",
       usage_count: 0,
     })
-    setNewService({ name: "", price: "", duration: "" })
+    setNewService({ name: "", price: "", duration: "", category: "" })
   }
 
   const handleSaveEdit = () => {
@@ -121,6 +121,7 @@ export default function Services() {
         name: selectedService.name,
         price: selectedService.price,
         duration: selectedService.duration,
+        category: selectedService.category,
       },
     })
     setIsEditDialogOpen(false)
@@ -162,6 +163,10 @@ export default function Services() {
                       <Label htmlFor="serviceDuration">Duration</Label>
                       <Input id="serviceDuration" value={newService.duration} onChange={(e) => setNewService({ ...newService, duration: e.target.value })} />
                     </div>
+                    <div>
+                      <Label htmlFor="serviceCategory">Category</Label>
+                      <Input id="serviceCategory" value={newService.category} onChange={(e) => setNewService({ ...newService, category: e.target.value })} />
+                    </div>
                     <Button onClick={handleSaveNewService}>Save Service</Button>
                   </div>
                 </DialogContent>
@@ -176,6 +181,7 @@ export default function Services() {
                 <TableHead>Service</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Duration</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Usage Count</TableHead>
                 <TableHead>Actions</TableHead>
@@ -184,7 +190,7 @@ export default function Services() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">Loading services...</TableCell>
+                  <TableCell colSpan={7} className="text-center">Loading services...</TableCell>
                 </TableRow>
               ) : (
                 services?.map((service) => (
@@ -192,6 +198,7 @@ export default function Services() {
                     <TableCell>{service.name}</TableCell>
                     <TableCell>₹{parseFloat(service.price).toFixed(2)}</TableCell>
                     <TableCell>{service.duration}</TableCell>
+                    <TableCell>{service.category}</TableCell>
                     <TableCell>
                       <Badge variant={service.status === "Active" ? "default" : "secondary"}>
                         {service.status}
@@ -266,6 +273,10 @@ export default function Services() {
               <div>
                 <Label htmlFor="serviceDuration">Duration</Label>
                 <Input id="serviceDuration" value={selectedService.duration} onChange={(e) => setSelectedService({ ...selectedService, duration: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="serviceCategory">Category</Label>
+                <Input id="serviceCategory" value={selectedService.category || ""} onChange={(e) => setSelectedService({ ...selectedService, category: e.target.value })} />
               </div>
               <Button onClick={handleSaveEdit}>Save Changes</Button>
             </div>

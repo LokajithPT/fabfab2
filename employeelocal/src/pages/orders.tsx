@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Eye,
   Edit,
-  Trash2,
   ArrowUp,
   ArrowDown,
   PlusCircle,
@@ -17,9 +16,10 @@ import {
   FileText,
   FileSpreadsheet,
   ChevronDown,
+  ChevronRight,
   Truck,
-  QrCode,
   Printer,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -54,7 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useLocation } from "wouter";
@@ -119,15 +119,23 @@ export default function OrdersTable() {
 
   // Modals
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
-
-  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<Order>>({});
+  const [editFormData, setEditFormData] = useState<Partial<Order>>({
+    customerName: "",
+    customerPhone: "",
+    specialInstructions: "",
+    pickupDate: "",
+    status: "Pending",
+  });
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [orderItemBarcodes, setOrderItemBarcodes] = useState<any[]>([]);
+  const [showDetailedBarcodes, setShowDetailedBarcodes] = useState(false);
+  const [selectedServiceIndex, setSelectedServiceIndex] = useState<number | null>(null);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isPrintQRModalOpen, setIsPrintQRModalOpen] = useState(false);
 
   const { toast } = useToast();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
   // Fetch services
   const fetchServices = async () => {
@@ -248,19 +256,7 @@ export default function OrdersTable() {
     window.print();
   };
 
-  const handleDownloadQR = (orderId: string) => {
-    const qrUrl = `http://localhost:5001/qr/${orderId}.png`;
-    const link = document.createElement("a");
-    link.href = qrUrl;
-    link.download = `order-${orderId}-qr.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-      title: "Success",
-      description: `QR code for order ${orderId} downloaded`,
-    });
-  };
+
 
   // Export functions
   const exportToCSV = () => {
@@ -449,8 +445,65 @@ export default function OrdersTable() {
     });
   };
 
-  const handleView = (order: Order) => {
+  const handleView = async (order: Order) => {
+    console.log("=== HANDLE VIEW CALLED ===");
+    console.log("Order:", order);
+    console.log("Order.serviceId:", order.serviceId);
+    console.log("Order.service:", order.service);
+    
     setViewOrder(order);
+    // Generate individual item barcodes for this order
+    try {
+      console.log("Calling barcode API...");
+      // Call backend to generate barcodes for existing order
+      const response = await adminFetch(`http://localhost:5001/api/orders/${order.id}/barcodes`, {
+        method: "POST",
+      });
+      
+      console.log("API Response:", response);
+      
+      if (response.success) {
+        console.log("✅ Success! Setting barcodes:", response.barcodes.items);
+        console.log("🔍 Barcode URLs:", response.barcodes.items.map((item: any) => item.barcode_url));
+        // Fix barcode URLs to include absolute path for standalone app
+        const fixedBarcodes = response.barcodes.items.map((item: any) => ({
+          ...item,
+          barcode_url: item.barcode_url.startsWith('http') 
+            ? item.barcode_url 
+            : `http://localhost:5001${item.barcode_url}`
+        }));
+        console.log("🔧 Fixed URLs:", fixedBarcodes.map((item: any) => item.barcode_url));
+        setOrderItemBarcodes(fixedBarcodes);
+      } else {
+        console.log("❌ API failed, using fallback...");
+        // Fallback: Generate item barcodes on the fly
+        const serviceIds = order.serviceId || [];
+        const itemBarcodes = serviceIds.map((_, index) => ({
+          item_number: index + 1,
+          total_items: serviceIds.length,
+          service_name: order.service[index] || `Service ${index + 1}`,
+          barcode_url: `http://localhost:5001/qr/${order.id}_item_${index + 1}.png`,
+          item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`,
+          display_data: `Order ${order.id} • Item ${index + 1}/${serviceIds.length} • ${order.service[index] || `Service ${index + 1}`}`
+        }));
+        console.log("🔄 Fallback barcodes:", itemBarcodes);
+        setOrderItemBarcodes(itemBarcodes);
+      }
+    } catch (err) {
+      console.error("💥 Error in barcode generation:", err);
+      // Fallback: Generate item barcodes on the fly
+      const serviceIds = order.serviceId || [];
+      const itemBarcodes = serviceIds.map((_, index) => ({
+        item_number: index + 1,
+        total_items: serviceIds.length,
+        service_name: order.service[index] || `Service ${index + 1}`,
+          barcode_url: `http://localhost:5001/qr/${order.id}_item_${index + 1}.png`,
+        item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`,
+        display_data: `Order ${order.id} • Item ${index + 1}/${serviceIds.length} • ${order.service[index] || `Service ${index + 1}`}`
+      }));
+      console.log("🔄 Error fallback barcodes:", itemBarcodes);
+      setOrderItemBarcodes(itemBarcodes);
+    }
   };
 
   const handleEdit = (order: Order) => {
@@ -805,9 +858,39 @@ export default function OrdersTable() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
-                      Service
+                      Services ({viewOrder.service.length} items)
                     </label>
-                    <p>{viewOrder.service.join(", ")}</p>
+                    <div className="mt-2 max-h-48 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2">
+                      {viewOrder.service.map((service, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-blue-50 cursor-pointer transition-colors"
+                          onClick={() => setSelectedServiceIndex(index)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 text-xs font-semibold">{index + 1}</span>
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 truncate max-w-xs">{service}</p>
+                          </div>
+                           <div className="flex items-center gap-1">
+                             {orderItemBarcodes[index] && (
+                               <div className="w-8 h-8 border border-gray-300 rounded p-1 bg-white">
+                                 <img
+                                   src={orderItemBarcodes[index].barcode_url}
+                                   alt={`Item ${index + 1}`}
+                                   className="w-full h-full object-contain"
+                                   onError={(e) => {
+                                     e.currentTarget.style.display = "none";
+                                   }}
+                                 />
+                               </div>
+                             )}
+                             <ChevronRight className="h-4 w-4 text-gray-400" />
+                           </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
@@ -815,51 +898,169 @@ export default function OrdersTable() {
                     </label>
                     <p>{formatDate(viewOrder.pickupDate)}</p>
                   </div>
-                </div>
-
-                {/* QR Code Section */}
-                <div className="flex flex-col items-center space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500 block text-center mb-2">
-                      Order QR Code
+                    <label className="text-sm font-medium text-gray-500">
+                      Total Items
                     </label>
-                    <div
-                      className="w-48 h-48 border-2 border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-400 transition-colors bg-white"
-                      onClick={handlePrintQR}
-                      title="Click to open print view"
-                    >
-                      <img
-                        src={`http://localhost:5001/qr/${viewOrder.id}.png`}                        onError={(e) => {
-                          console.error("QR Code failed to load");
-                          e.currentTarget.style.display = "none";
-                          e.currentTarget.parentElement!.innerHTML =
-                            '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">⚠️</div><div class="text-sm">QR Code not found</div></div></div>';
-                        }}
-                      />
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">{viewOrder.service.length}</span>
+                      </div>
+                      <p className="font-semibold text-gray-900">{viewOrder.service.length} Services</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* QR Actions */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownloadQR(viewOrder.id)}
-                      className="flex items-center gap-1"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handlePrintQR}
-                      className="flex items-center gap-1"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Print
-                    </Button>
-                  </div>
+                {/* Sexy Barcode Section */}
+                <div className="flex flex-col items-center space-y-4">
+                  {!showDetailedBarcodes ? (
+                    /* Compact Summary View */
+                    <div className="text-center space-y-4">
+                      <div className="relative inline-block">
+                        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white text-2xl font-bold">{orderItemBarcodes.length}</span>
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          {orderItemBarcodes.length} Items
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Order #{viewOrder.id} • Individual barcodes
+                        </p>
+                      </div>
+
+                      <div className="flex justify-center mb-4">
+                        <div
+                          className="w-24 h-24 border-2 border-gray-200 rounded-xl p-2 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white"
+                          onClick={handlePrintQR}
+                        >
+                          <img
+                            src={`http://localhost:5001/qr/${viewOrder.id}.png`}
+                            alt={`Order ${viewOrder.id}`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              console.error("QR Code failed to load");
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={() => setShowDetailedBarcodes(true)}
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg shadow-lg"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View All Barcodes
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handlePrintQR}
+                          className="px-6 py-2 rounded-lg"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Detailed Grid View */
+                    <div className="space-y-4 w-full">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">All Item Barcodes</h3>
+                          <p className="text-sm text-gray-600">Order #{viewOrder.id}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDetailedBarcodes(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Sexy Grid Layout */}
+                      <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2">
+                        {orderItemBarcodes.map((item, index) => (
+                          <div
+                            key={index}
+                            className="group relative bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = item.barcode_url;
+                              link.download = `order-${viewOrder.id}-item-${item.item_number}.png`;
+                              link.click();
+                            }}
+                          >
+                            {/* Item Number Badge */}
+                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
+                              {item.item_number}
+                            </div>
+
+                            {/* Content */}
+                            <div className="space-y-2">
+                              <div className="w-12 h-12 mx-auto border-2 border-white rounded-lg p-1 bg-white shadow-sm">
+                                <img
+                                  src={item.barcode_url}
+                                  alt={`Item ${item.item_number}`}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              </div>
+                              
+                              <div className="text-center">
+                                <p className="text-xs font-medium text-gray-900 truncate">
+                                  {item.service_name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {item.item_number}/{item.total_items}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-xl transition-all" />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 justify-center pt-2 border-t border-gray-200">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            orderItemBarcodes.forEach((item, index) => {
+                              setTimeout(() => {
+                                const link = document.createElement('a');
+                                link.href = item.barcode_url;
+                                link.download = `order-${viewOrder.id}-item-${item.item_number}.png`;
+                                link.click();
+                              }, index * 100);
+                            });
+                          }}
+                          className="text-xs"
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download All
+                        </Button>
+                        <Button size="sm" onClick={handlePrintQR} className="text-xs">
+                          <Printer className="h-3 w-3 mr-1" />
+                          Print All
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -891,6 +1092,100 @@ export default function OrdersTable() {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Individual Service Detail Modal */}
+      <Dialog open={selectedServiceIndex !== null} onOpenChange={() => setSelectedServiceIndex(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Service Details - Item #{selectedServiceIndex !== null ? selectedServiceIndex + 1 : ''}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedServiceIndex !== null && viewOrder && (
+            <div className="space-y-4 py-4">
+              {/* Service Info */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Service Name</label>
+                  <p className="font-semibold text-gray-900">{viewOrder.service[selectedServiceIndex]}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Item Number</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">{selectedServiceIndex + 1}</span>
+                    </div>
+                    <p className="font-medium">Item {selectedServiceIndex + 1} of {viewOrder.service.length}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Order ID</label>
+                  <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{viewOrder.id}</p>
+                </div>
+              </div>
+
+                {/* Barcode Display */}
+              <div className="flex flex-col items-center space-y-4">
+                <label className="text-sm font-medium text-gray-500">Item Barcode</label>
+                {orderItemBarcodes[selectedServiceIndex] ? (
+                  <div className="space-y-3">
+                    <div className="w-32 h-32 border-2 border-gray-300 rounded-xl p-3 bg-white shadow-lg">
+                      <img
+                        src={orderItemBarcodes[selectedServiceIndex].barcode_url}
+                        alt={`Item ${selectedServiceIndex + 1}`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error("Barcode failed to load");
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 mb-2">
+                        {orderItemBarcodes[selectedServiceIndex].display_data || 
+                         `Order ${viewOrder.id} • Item ${selectedServiceIndex + 1}/${viewOrder.service.length}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = orderItemBarcodes[selectedServiceIndex].barcode_url;
+                          link.download = `order-${viewOrder.id}-item-${orderItemBarcodes[selectedServiceIndex].item_number}.png`;
+                          link.click();
+                        }}
+                        className="flex-1"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.print()}
+                        className="flex-1"
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                      <Package className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-sm">Barcode not available</p>
+                    <p className="text-gray-400 text-xs mt-1">Generate barcodes to view item details</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
@@ -1150,23 +1445,25 @@ export default function OrdersTable() {
 
 
 
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print\\:block,
+            .print\\:block * {
+              visibility: visible;
+            }
+            .print\\:block {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
           }
-          .print\\:block,
-          .print\\:block * {
-            visibility: visible;
-          }
-          .print\\:block {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}</style>
+        `
+      }} />
     </div>
   );
 }
