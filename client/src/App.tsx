@@ -13,7 +13,7 @@ import Services from "@/pages/services";
 import CreateOrder from "@/pages/create-order";
 import Tracking from "@/pages/tracking";
 import Customers from "@/pages/customers";
-import Analytics from "@/pages/analytics";
+
 import { MainLayout } from "@/components/layout/main-layout";
 import Inventory from "@/pages/inventory";
 import Logistics from "@/pages/logistics";
@@ -52,7 +52,7 @@ function Router() {
         <Route path="/orders" component={Orders} />
         <Route path="/inventory" component={Inventory} />
         <Route path="/customers" component={Customers} />
-        <Route path="/analytics" component={Analytics} />
+
         <Route path="/services" component={Services} />
         <Route path="/employees" component={Employees} />
         <Route path="/create-order" component={CreateOrder} />

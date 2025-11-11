@@ -3,7 +3,6 @@ import {
   Home,
   ShoppingCart,
   Users2,
-  LineChart,
   Package,
   Settings,
   Truck,
@@ -74,9 +73,7 @@ export function Sidebar() {
         <NavLink to="/transit-orders" icon={Truck}>
           Transit
         </NavLink>
-        <NavLink to="/analytics" icon={LineChart}>
-          Analytics
-        </NavLink>
+
       </nav>
       <nav className="mt-auto flex flex-col gap-2 p-4">
         <Link

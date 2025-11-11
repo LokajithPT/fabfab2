@@ -856,7 +856,7 @@ export default function OrdersTable() {
 
       {/* View Order Modal with QR Code */}
       <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -928,20 +928,23 @@ export default function OrdersTable() {
                         </div>
                       </div>
 
-                      <div className="flex gap-3 justify-center">
+                      <div className="flex justify-center mb-4">
                         <Button
                           onClick={() => setShowDetailedBarcodes(true)}
-                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg shadow-lg"
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 font-semibold"
                         >
-                          <Eye className="h-4 w-4 mr-2" />
+                          <Eye className="h-5 w-5 mr-2" />
                           View All Barcodes
                         </Button>
+                      </div>
+
+                      <div className="flex justify-center">
                         <Button
                           variant="outline"
                           onClick={handlePrintQR}
-                          className="px-6 py-2 rounded-lg"
+                          className="px-8 py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-semibold"
                         >
-                          <Printer className="h-4 w-4 mr-2" />
+                          <Printer className="h-5 w-5 mr-2" />
                           Print
                         </Button>
                       </div>
@@ -1012,9 +1015,8 @@ export default function OrdersTable() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2 justify-center pt-2 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 border-t border-gray-200 px-4">
                         <Button
-                          size="sm"
                           variant="outline"
                           onClick={() => {
                             orderItemBarcodes.forEach((item, index) => {
@@ -1026,13 +1028,16 @@ export default function OrdersTable() {
                               }, index * 100);
                             });
                           }}
-                          className="text-xs"
+                          className="px-6 py-2 rounded-lg border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium"
                         >
-                          <Download className="h-3 w-3 mr-1" />
+                          <Download className="h-4 w-4 mr-2" />
                           Download All
                         </Button>
-                        <Button size="sm" onClick={handlePrintQR} className="text-xs">
-                          <Printer className="h-3 w-3 mr-1" />
+                        <Button 
+                          onClick={handlePrintQR} 
+                          className="px-6 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
                           Print All
                         </Button>
                       </div>
