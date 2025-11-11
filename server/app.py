@@ -2,7 +2,7 @@ import os
 import barcode
 from barcode.writer import ImageWriter
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask_cors import CORS
 from flask import (
@@ -74,6 +74,41 @@ def generate_qr(order):
     ean.save(qr_path)
 
     return f"{qr_path}.png"
+
+def generate_individual_item_barcodes(order):
+    """Generate individual barcodes for each service item in the order"""
+    qr_dir = os.path.join(BASE_DIR, "qr")
+    os.makedirs(qr_dir, exist_ok=True)
+    
+    # Parse service IDs and names
+    service_ids = order.service_id.split(",") if order.service_id else []
+    service_names = order.service_name.split(",") if order.service_name else []
+    
+    item_barcodes = []
+    
+    for i, (service_id, service_name) in enumerate(zip(service_ids, service_names), 1):
+        # Create item data string for barcode - SHORT VERSION
+        item_data = f"{order.id}-{i}"
+        
+        # Generate barcode for this item
+        EAN = barcode.get_barcode_class('code128')
+        ean = EAN(item_data, writer=ImageWriter())
+        
+        # Save individual item barcode
+        item_path = os.path.join(qr_dir, f"{order.id}_item_{i}")
+        ean.save(item_path)
+        
+        item_barcodes.append({
+            "item_number": i,
+            "total_items": len(service_ids),
+            "service_name": service_name,
+            "barcode_path": f"{item_path}.png",
+            "barcode_url": f"/qr/{order.id}_item_{i}.png",
+            "item_data": item_data,
+            "display_data": f"Order {order.id} • Item {i}/{len(service_ids)} • {service_name}"
+        })
+    
+    return item_barcodes
 
 # ---------------- MODELS ---------------- #
 class Worker(db.Model):
@@ -224,6 +259,30 @@ def serve_qr_code(filename):
     qr_dir = os.path.join(BASE_DIR, "qr")
     return send_from_directory(qr_dir, filename)
 
+@app.route("/api/orders/<order_id>/barcodes", methods=["POST"])
+def generate_order_barcodes(order_id):
+    """Generate individual item barcodes for existing order"""
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # Generate individual item barcodes
+        item_barcodes = generate_individual_item_barcodes(order)
+        
+        # Generate main order barcode if it doesn't exist
+        main_qr_path = os.path.join(BASE_DIR, "qr", f"{order.id}.png")
+        if not os.path.exists(main_qr_path):
+            main_qr_path = generate_qr(order)
+        
+        return jsonify({
+            "success": True,
+            "barcodes": {
+                "main_qr": f"/qr/{order.id}.png",
+                "items": item_barcodes
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 
@@ -341,12 +400,21 @@ def create_order_auto_customer():
     )
     db.session.add(order)
     db.session.commit()
-    generate_qr(order)
+    
+    # Generate individual item barcodes
+    item_barcodes = generate_individual_item_barcodes(order)
+    
+    # Generate main order barcode for summary
+    main_qr_path = generate_qr(order)
 
-    # 3️⃣ Return both order + customer
+    # 3️⃣ Return both order + customer + barcodes
     return jsonify({
         "order": order.to_dict(),
-        "customer": customer.to_dict()
+        "customer": customer.to_dict(),
+        "barcodes": {
+            "main_qr": main_qr_path,
+            "items": item_barcodes
+        }
     }), 201
 
 @app.route("/api/orders", methods=["GET"])
@@ -873,9 +941,35 @@ def get_dashboard_summary():
     pending_pickups = db.session.query(Order).filter_by(status="At Store").count() # Assuming 'At Store' means pending pickup
     total_services = db.session.query(Service).count()
     shipments_in_transit = db.session.query(TransitBatch).filter_by(status="IN_TRANSIT").count()
-    active_stores = 12 # Placeholder, as store concept is not fully defined in models
-    on_time_delivery_rate = 98.2 # Placeholder
-    washing_capacity = 85 # Placeholder
+    
+    # Get order status data
+    order_status_data = []
+    statuses = ['Pending', 'At Store', 'In Transit', 'Delivered', 'Cancelled']
+    for status in statuses:
+        count = db.session.query(Order).filter_by(status=status).count()
+        order_status_data.append({'name': status, 'value': count})
+    
+    # Get service popularity data
+    service_popularity_data = []
+    services = db.session.query(Service).all()
+    for service in services:
+        order_count = db.session.query(Order).filter_by(service_id=service.id).count()
+        service_popularity_data.append({'name': service.name, 'orders': order_count})
+    
+    # Get sales data for last 6 months
+    sales_data = []
+    for i in range(6):
+        month_start = datetime.utcnow().replace(day=1) - timedelta(days=30*i)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        month_revenue = db.session.query(db.func.sum(Order.total)).filter(
+            Order.created_at >= month_start,
+            Order.created_at <= month_end
+        ).scalar() or 0
+        sales_data.append({
+            'month': month_start.strftime('%b'),
+            'revenue': month_revenue
+        })
+    sales_data.reverse()
 
     return jsonify({
         "totalRevenue": total_revenue,
@@ -884,6 +978,9 @@ def get_dashboard_summary():
         "pendingPickups": pending_pickups,
         "totalServices": total_services,
         "shipmentsInTransit": shipments_in_transit,
+        "orderStatusData": order_status_data,
+        "servicePopularityData": service_popularity_data,
+        "salesData": sales_data
     }), 200
 
 

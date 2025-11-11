@@ -20,6 +20,7 @@ import {
   Truck,
   QrCode,
   Printer,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -125,6 +126,8 @@ export default function OrdersTable() {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isPrintQRModalOpen, setIsPrintQRModalOpen] = useState(false);
+  const [orderItemBarcodes, setOrderItemBarcodes] = useState<any[]>([]);
+  const [showDetailedBarcodes, setShowDetailedBarcodes] = useState(false);
 
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -449,8 +452,43 @@ export default function OrdersTable() {
     });
   };
 
-  const handleView = (order: Order) => {
+  const handleView = async (order: Order) => {
     setViewOrder(order);
+    // Generate individual item barcodes for this order
+    try {
+      // Call backend to generate barcodes for existing order
+      const response = await adminFetch(`/api/orders/${order.id}/barcodes`, {
+        method: "POST",
+      });
+      
+      if (response.success) {
+        setOrderItemBarcodes(response.barcodes.items);
+      } else {
+        // Fallback: Generate item barcodes on the fly
+        const serviceIds = order.serviceId || [];
+        const itemBarcodes = serviceIds.map((serviceId, index) => ({
+          item_number: index + 1,
+          total_items: serviceIds.length,
+          service_name: order.service[index] || `Service ${index + 1}`,
+          barcode_url: `/qr/${order.id}_item_${index + 1}.png`,
+          item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`
+        }));
+        setOrderItemBarcodes(itemBarcodes);
+      }
+    } catch (err) {
+      console.error("Failed to generate item barcodes:", err);
+      // Fallback: Generate item barcodes on the fly
+      const serviceIds = order.serviceId || [];
+      const itemBarcodes = serviceIds.map((serviceId, index) => ({
+        item_number: index + 1,
+        total_items: serviceIds.length,
+        service_name: order.service[index] || `Service ${index + 1}`,
+        barcode_url: `/qr/${order.id}_item_${index + 1}.png`,
+        item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`,
+        display_data: `Order ${order.id} • Item ${index + 1}/${serviceIds.length} • ${order.service[index] || `Service ${index + 1}`}`
+      }));
+      setOrderItemBarcodes(itemBarcodes);
+    }
   };
 
   const handleEdit = (order: Order) => {
@@ -850,52 +888,156 @@ export default function OrdersTable() {
                   </div>
                 </div>
 
-                {/* QR Code Section */}
+                {/* Sexy Barcode Section */}
                 <div className="flex flex-col items-center space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 block text-center mb-2">
-                      Order QR Code
-                    </label>
-                    <div
-                      className="w-48 h-48 border-2 border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-400 transition-colors bg-white"
-                      onClick={handlePrintQR}
-                      title="Click to open print view"
-                    >
-                      <img
-                        src={`/qr/${viewOrder.id}.png`}
-                        alt={`QR Code for Order ${viewOrder.id}`}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          console.error("QR Code failed to load");
-                          e.currentTarget.style.display = "none";
-                          e.currentTarget.parentElement!.innerHTML =
-                            '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">⚠️</div><div class="text-sm">QR Code not found</div></div></div>';
-                        }}
-                      />
-                    </div>
-                  </div>
+                  {!showDetailedBarcodes ? (
+                    /* Compact Summary View */
+                    <div className="text-center space-y-4">
+                      <div className="relative inline-block">
+                        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                          <span className="text-white text-2xl font-bold">{orderItemBarcodes.length}</span>
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          {orderItemBarcodes.length} Items
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Order #{viewOrder.id} • Individual barcodes
+                        </p>
+                      </div>
 
-                  {/* QR Actions */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownloadQR(viewOrder.id)}
-                      className="flex items-center gap-1"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handlePrintQR}
-                      className="flex items-center gap-1"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Print
-                    </Button>
-                  </div>
+                      <div className="flex justify-center mb-4">
+                        <div
+                          className="w-24 h-24 border-2 border-gray-200 rounded-xl p-2 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white"
+                          onClick={handlePrintQR}
+                        >
+                          <img
+                            src={`/qr/${viewOrder.id}.png`}
+                            alt={`Order ${viewOrder.id}`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              console.error("QR Code failed to load");
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={() => setShowDetailedBarcodes(true)}
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg shadow-lg"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View All Barcodes
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handlePrintQR}
+                          className="px-6 py-2 rounded-lg"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Detailed Grid View */
+                    <div className="space-y-4 w-full">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">All Item Barcodes</h3>
+                          <p className="text-sm text-gray-600">Order #{viewOrder.id}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDetailedBarcodes(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Sexy Grid Layout */}
+                      <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2">
+                        {orderItemBarcodes.map((item, index) => (
+                          <div
+                            key={index}
+                            className="group relative bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = item.barcode_url;
+                              link.download = `order-${viewOrder.id}-item-${item.item_number}.png`;
+                              link.click();
+                            }}
+                          >
+                            {/* Item Number Badge */}
+                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
+                              {item.item_number}
+                            </div>
+
+                            {/* Content */}
+                            <div className="space-y-2">
+                              <div className="w-12 h-12 mx-auto border-2 border-white rounded-lg p-1 bg-white shadow-sm">
+                                <img
+                                  src={item.barcode_url}
+                                  alt={`Item ${item.item_number}`}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              </div>
+                              
+                              <div className="text-center">
+                                <p className="text-xs font-medium text-gray-900 truncate">
+                                  {item.service_name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {item.item_number}/{item.total_items}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-xl transition-all" />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 justify-center pt-2 border-t border-gray-200">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            orderItemBarcodes.forEach((item, index) => {
+                              setTimeout(() => {
+                                const link = document.createElement('a');
+                                link.href = item.barcode_url;
+                                link.download = `order-${viewOrder.id}-item-${item.item_number}.png`;
+                                link.click();
+                              }, index * 100);
+                            });
+                          }}
+                          className="text-xs"
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download All
+                        </Button>
+                        <Button size="sm" onClick={handlePrintQR} className="text-xs">
+                          <Printer className="h-3 w-3 mr-1" />
+                          Print All
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

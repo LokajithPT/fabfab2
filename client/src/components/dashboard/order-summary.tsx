@@ -17,11 +17,11 @@ export default function OrderSummary() {
   const todayTransactions = transactions?.filter(transaction => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return new Date(transaction.createdAt) >= today;
+    return transaction.createdAt && new Date(transaction.createdAt) >= today;
   }) || [];
 
   const todayRevenue = todayTransactions.reduce((sum, transaction) => 
-    sum + parseFloat(transaction.totalAmount), 0
+    sum + parseFloat(transaction.totalAmount || transaction.amount || "0"), 0
   );
 
   const averageTransaction = todayTransactions.length > 0 

@@ -9,6 +9,58 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const deliveries = pgTable("deliveries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  deliveryDate: timestamp("delivery_date"),
+  deliveryAddress: jsonb("delivery_address"),
+  deliveryStatus: text("delivery_status", { enum: ["pending", "in_transit", "delivered", "failed"] }).notNull().default("pending"),
+  trackingNumber: text("tracking_number"),
+  vehicleId: text("vehicle_id"),
+  driverName: text("driver_name"),
+  status: text("status", { enum: ["pending", "in_transit", "delivered", "failed"] }).notNull().default("pending"),
+  estimatedDelivery: timestamp("estimated_delivery"),
+  actualDelivery: timestamp("actual_delivery"),
+  location: text("location"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const orderTransactions = pgTable("order_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  transactionType: text("transaction_type", { enum: ["payment", "refund", "adjustment"] }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
+  paymentMethod: text("payment_method"),
+  status: text("status", { enum: ["pending", "completed", "failed"] }).notNull().default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const customers = pgTable("customers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").unique(),
+  phone: text("phone"),
+  address: jsonb("address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const services = pgTable("services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  duration: text("duration"),
+  category: text("category"),
+  status: text("status", { enum: ["active", "inactive"] }).notNull().default("active"),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -29,13 +81,13 @@ export const orders = pgTable("orders", {
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone"),
-  status: text("status", { enum: ["pending", "processing", "completed", "cancelled", "in_store", "ready_for_transit", "out_for_delivery"] }).notNull(), // pending, processing, completed, cancelled, in_store, ready_for_transit, out_for_delivery
+  status: text("status", { enum: ["pending", "processing", "completed", "cancelled", "in_store", "ready_for_transit", "out_for_delivery", "Quality Check", "Ready for Delivery"] }).notNull(), // pending, processing, completed, cancelled, in_store, ready_for_transit, out_for_delivery
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "failed"] }).notNull().default("pending"), // pending, paid, failed
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   items: jsonb("items").notNull(), // Array of order items
   shippingAddress: jsonb("shipping_address"),
   pickupDate: timestamp("pickup_date"), // Scheduled pickup date
-  transitOrderId: varchar("transit_order_id").references(() => transitOrders.id), // Link to transit batch
+  transitOrderId: varchar("transit_order_id"), // Link to transit batch
   transitStatus: text("transit_status", { enum: ["pending", "in_transit", "delivered"] }), // Status within transit
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -175,6 +227,9 @@ export type TransitOrderItem = typeof transitOrderItems.$inferSelect;
 
 export type InsertTransitStatusHistory = z.infer<typeof insertTransitStatusHistorySchema>;
 export type TransitStatusHistory = typeof transitStatusHistory.$inferSelect;
+
+// Alias for backward compatibility
+export type PosTransaction = OrderTransaction;
 
 // Custom Service Interface to match Flask-SQLAlchemy model
 export interface Service {

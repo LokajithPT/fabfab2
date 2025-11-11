@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PlusCircle, User, Truck, Download, Printer } from "lucide-react";
+import { PlusCircle, User, Truck, Download, Printer, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,8 @@ export default function CreateOrder() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [itemBarcodes, setItemBarcodes] = useState<any[]>([]);
+  const [showDetailedView, setShowDetailedView] = useState(false);
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
   const [extraCharges, setExtraCharges] = useState<number>(0);
   const [extraChargesNote, setExtraChargesNote] = useState<string>("");
@@ -121,6 +123,8 @@ export default function CreateOrder() {
       setCreatedOrderId(newOrder.order.id);
       // Set QR code URL - this will be served by your Flask backend
       setQrCodeUrl(`/qr/${newOrder.order.id}.png`);
+      // Set individual item barcodes
+      setItemBarcodes(newOrder.barcodes?.items || []);
       setIsModalOpen(true);
 
       queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -156,10 +160,15 @@ export default function CreateOrder() {
       const link = document.createElement("a");
       link.href = qrCodeUrl;
       link.download = `order-${createdOrderId}-qr.png`;
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
     }
+  };
+
+  const handleDownloadItemBarcode = (item: any) => {
+    const link = document.createElement("a");
+    link.href = item.barcode_url;
+    link.download = `order-${createdOrderId}-item-${item.item_number}.png`;
+    link.click();
   };
 
   // Calculate subtotal for display
@@ -454,41 +463,138 @@ export default function CreateOrder() {
               <PlusCircle className="h-8 w-8 text-green-600" />
             </div>
 
-            {/* QR Code Display */}
-            {qrCodeUrl && (
-              <div className="space-y-3">
-                <div
-                  className="mx-auto w-48 h-48 border-2 border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-400 transition-colors"
-                  onClick={handlePrintQR}
-                  title="Click to open print view"
-                >
-                  <img
-                    src={qrCodeUrl}
-                    alt={`QR Code for Order ${createdOrderId}`}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      console.error("QR Code failed to load");
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                </div>
-                <p className="text-sm text-gray-600">
-                  Click QR code to print or use buttons below
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleDownloadQR}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={handlePrintQR}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print
-                  </Button>
-                </div>
+            {/* Sexy Compact Barcode Display */}
+            {itemBarcodes.length > 0 && (
+              <div className="space-y-4">
+                {!showDetailedView ? (
+                  /* Compact Summary View */
+                  <div className="text-center space-y-4">
+                    <div className="relative inline-block">
+                      <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span className="text-white text-2xl font-bold">{itemBarcodes.length}</span>
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">
+                        {itemBarcodes.length} Items Ready
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Order #{createdOrderId} • Individual barcodes generated
+                      </p>
+                    </div>
+
+                    {qrCodeUrl && (
+                      <div className="flex justify-center mb-4">
+                        <div
+                          className="w-24 h-24 border-2 border-gray-200 rounded-xl p-2 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white"
+                          onClick={handlePrintQR}
+                        >
+                          <img
+                            src={qrCodeUrl}
+                            alt={`Order ${createdOrderId}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 justify-center">
+                      <Button
+                        onClick={() => setShowDetailedView(true)}
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg shadow-lg"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View All Barcodes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handlePrintQR}
+                        className="px-6 py-2 rounded-lg"
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Detailed Grid View */
+                  <div className="space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">All Item Barcodes</h3>
+                        <p className="text-sm text-gray-600">Order #{createdOrderId}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDetailedView(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Sexy Grid Layout */}
+                    <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-2">
+                      {itemBarcodes.map((item, index) => (
+                        <div
+                          key={index}
+                          className="group relative bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+                          onClick={() => handleDownloadItemBarcode(item)}
+                        >
+                          {/* Item Number Badge */}
+                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
+                            {item.item_number}
+                          </div>
+
+                          {/* Content */}
+                          <div className="space-y-2">
+                            <div className="w-16 h-16 mx-auto border-2 border-white rounded-lg p-1 bg-white shadow-sm">
+                              <img
+                                src={item.barcode_url}
+                                alt={`Item ${item.item_number}`}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            
+                            <div className="text-center">
+                              <p className="text-xs font-medium text-gray-900 truncate">
+                                {item.service_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {item.item_number}/{item.total_items}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Hover Overlay */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-xl transition-all" />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 justify-center pt-2 border-t border-gray-200">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleDownloadQR}
+                        className="text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download All
+                      </Button>
+                      <Button size="sm" onClick={handlePrintQR} className="text-xs">
+                        <Printer className="h-3 w-3 mr-1" />
+                        Print All
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -534,42 +640,79 @@ export default function CreateOrder() {
                   FabClean Laundry
                 </h2>
                 <p className="text-sm text-gray-600 print:text-base">
-                  Order Tracking QR Code
+                  Order Item Barcodes
                 </p>
               </div>
 
-              {qrCodeUrl && (
-                <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
-                  <img
-                    src={qrCodeUrl}
-                    alt={`QR Code for Order ${createdOrderId}`}
-                    className="w-full h-full object-contain border border-gray-300"
-                  />
+              {/* Individual Item Barcodes */}
+              {itemBarcodes.length > 0 && (
+                <div className="space-y-4 print:space-y-6">
+                  {itemBarcodes.map((item, index) => (
+                    <div key={index} className="flex items-center gap-4 border-b border-gray-200 pb-4 print:border-b print:border-gray-400 print:pb-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-bold text-lg print:text-xl">
+                            {item.item_number}/{item.total_items}
+                          </span>
+                          <span className="text-sm text-gray-600 print:text-base">
+                            {item.service_name}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 print:text-sm">Order: {createdOrderId}</p>
+                      </div>
+                      
+                      <div className="w-20 h-20 print:w-32 print:h-32">
+                        <img
+                          src={item.barcode_url}
+                          alt={`Item ${item.item_number}`}
+                          className="w-full h-full object-contain border border-gray-300"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              <div className="space-y-2 print:space-y-3">
-                <p className="font-mono text-lg print:text-xl">
-                  Order #{createdOrderId}
-                </p>
-                <p className="text-sm print:text-base">
-                  Customer: {customerName}
-                </p>
-                <p className="text-sm print:text-base">
-                  Phone: {customerPhone}
-                </p>
-                {pickupDate && (
-                  <p className="text-sm print:text-base">
-                    Pickup: {new Date(pickupDate).toLocaleDateString()}
-                  </p>
-                )}
-                <p className="text-sm print:text-base font-semibold">
-                  Total: ₹{finalTotalDisplay.toFixed(2)}
-                </p>
+              {/* Order Summary */}
+              <div className="mt-6 print:mt-8 border-t-2 border-gray-300 pt-4 print:border-t-2 print:border-gray-400 print:pt-6">
+                <div className="text-center mb-4 print:mb-6">
+                  <h3 className="font-bold text-lg print:text-xl">Order Summary</h3>
+                  <p className="text-sm text-gray-600 print:text-base">FabClean Laundry</p>
+                </div>
+                
+                <div className="flex items-center gap-6 mb-4 print:mb-6">
+                  <div className="flex-1 text-center">
+                    {qrCodeUrl && (
+                      <div className="w-24 h-24 print:w-32 print:h-32 mx-auto mb-2">
+                        <img
+                          src={qrCodeUrl}
+                          alt={`Order ${createdOrderId}`}
+                          className="w-full h-full object-contain border-2 border-gray-300"
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 print:text-sm">Main Order QR</p>
+                  </div>
+                  
+                  <div className="flex-1 space-y-1 print:space-y-2">
+                    <p className="font-mono font-bold text-base print:text-lg">
+                      #{createdOrderId}
+                    </p>
+                    <p className="text-sm print:text-base">
+                      {customerName}
+                    </p>
+                    <p className="text-sm print:text-base">
+                      {customerPhone}
+                    </p>
+                    <p className="font-semibold text-sm print:text-base">
+                      {itemBarcodes.length} items • ₹{finalTotalDisplay.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="text-xs text-gray-500 print:text-sm print:mt-8">
-                <p>Scan this QR code to track your order</p>
+                <p>Scan individual item barcodes for tracking</p>
                 <p>Keep this receipt safe</p>
               </div>
             </div>

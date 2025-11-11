@@ -216,13 +216,43 @@ export default function SuperAdminDashboard() {
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
-  // --- TODO: Replace with API call to fetch real-time dashboard data ---
-  const totalRevenue = dummySalesData.reduce(
+  // Fetch real dashboard data
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: () => authFetch("/admin/api/dashboard-summary"),
+  });
+
+  const { data: realOrders, isLoading: ordersLoading } = useQuery({
+    queryKey: ["orders"],
+    queryFn: () => authFetch("/admin/api/orders"),
+  });
+
+  const { data: realCustomers, isLoading: customersLoading } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => authFetch("/admin/api/customers"),
+  });
+
+  const { data: realServices, isLoading: servicesLoading } = useQuery({
+    queryKey: ["services"],
+    queryFn: () => authFetch("/admin/api/services"),
+  });
+
+  // Use real data or fallback to dummy
+  const totalRevenue = dashboardData?.totalRevenue || dummySalesData.reduce(
     (acc, item) => acc + item.revenue,
     0,
   );
-  const totalOrders = dummyOrders.length;
-  const newCustomers = dummyCustomers.filter((customer) => {
+  const totalOrders = realOrders?.length || dummyOrders.length;
+  const newCustomers = realCustomers?.filter((customer: any) => {
+    const joinDate = new Date(customer.joinDate || customer.created_at);
+    const currentDate = new Date();
+    const oneMonthAgo = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      currentDate.getDate(),
+    );
+    return joinDate >= oneMonthAgo;
+  }).length || dummyCustomers.filter((customer) => {
     const joinDate = new Date(customer.joinDate);
     const currentDate = new Date();
     const oneMonthAgo = new Date(
@@ -300,36 +330,18 @@ export default function SuperAdminDashboard() {
           }
         />
         <KpiCard
-          title="Total Franchises"
-          value="+2"
-          change="+2 this month"
+          title="New Customers"
+          value={newCustomers.toString()}
+          change="+20.1% from last month"
           changeType="positive"
-          icon={<Landmark className="h-4 w-4 text-muted-foreground" />}
+          icon={<UserPlus className="h-4 w-4 text-muted-foreground" />}
           animationDelay={100}
           details={
             <div className="py-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Franchise</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {franchiseDetailsData.map((franchise) => (
-                    <TableRow key={franchise.name}>
-                      <TableCell className="font-medium">
-                        {franchise.name}
-                      </TableCell>
-                      <TableCell>{franchise.status}</TableCell>
-                      <TableCell className="text-right">
-                        {franchise.revenue}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <h4 className="font-semibold mb-2 text-center">Recent Customer Growth</h4>
+              <div className="text-center text-2xl font-bold text-primary">
+                {newCustomers} new customers this month
+              </div>
             </div>
           }
         />
@@ -351,60 +363,42 @@ export default function SuperAdminDashboard() {
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {dummyOrders.slice(0, 5).map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell>{order.status}</TableCell>
-                      <TableCell className="text-right">
-                        ₹{order.total.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                 <TableBody>
+                   {(realOrders?.slice(0, 5) || dummyOrders.slice(0, 5)).map((order: any) => (
+                     <TableRow key={order.id}>
+                       <TableCell className="font-medium">{order.id}</TableCell>
+                       <TableCell>{order.customer_name || order.customerName}</TableCell>
+                       <TableCell>{order.status}</TableCell>
+                       <TableCell className="text-right">
+                         ₹{(order.total || order.amount || 0).toLocaleString()}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                 </TableBody>
               </Table>
             </div>
           }
         />
         <KpiCard
           title="Pending Pickups"
-          value="+573"
-          change="+201 since last hour"
+          value={dashboardData?.pendingPickups?.toString() || "0"}
+          change="Ready for processing"
           changeType="positive"
           icon={<Package className="h-4 w-4 text-muted-foreground" />}
           animationDelay={300}
           details={
             <div className="py-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingPickupsData.map((pickup) => (
-                    <TableRow key={pickup.customer}>
-                      <TableCell className="font-medium">
-                        {pickup.customer}
-                      </TableCell>
-                      <TableCell>{pickup.location}</TableCell>
-                      <TableCell className="text-right">
-                        {pickup.time}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <h4 className="font-semibold mb-2 text-center">Orders Awaiting Pickup</h4>
+              <div className="text-center text-2xl font-bold text-orange-600">
+                {dashboardData?.pendingPickups || 0} orders ready
+              </div>
             </div>
           }
         />
         <KpiCard
           title="Total Services"
-          value="24"
-          change="+5 this month"
+          value={dashboardData?.totalServices?.toString() || "0"}
+          change="Active services"
           changeType="positive"
           icon={<ClipboardList className="h-4 w-4 text-muted-foreground" />}
           animationDelay={400}
@@ -414,19 +408,19 @@ export default function SuperAdminDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Service</TableHead>
-                    <TableHead>Monthly Orders</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead>Orders</TableHead>
+                    <TableHead className="text-right">Popularity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {servicesDetailsData.map((service) => (
+                  {(dashboardData?.servicePopularityData || dummyServicePopularityData).slice(0, 5).map((service: any) => (
                     <TableRow key={service.name}>
                       <TableCell className="font-medium">
                         {service.name}
                       </TableCell>
-                      <TableCell>{service.monthlyOrders}</TableCell>
+                      <TableCell>{service.orders || service.value}</TableCell>
                       <TableCell className="text-right">
-                        {service.revenue}
+                        {((service.orders || service.value) / totalOrders * 100).toFixed(1)}%
                       </TableCell>
                     </TableRow>
                   ))}
@@ -437,37 +431,17 @@ export default function SuperAdminDashboard() {
         />
         <KpiCard
           title="Shipments in Transit"
-          value="42"
-          change="15 arriving today"
+          value={dashboardData?.shipmentsInTransit?.toString() || "0"}
+          change="Currently active"
           changeType="positive"
           icon={<Truck className="h-4 w-4 text-muted-foreground" />}
           animationDelay={500}
           details={
             <div className="py-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Shipment ID</TableHead>
-                    <TableHead>Destination</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">ETA</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {shipmentsDetailsData.map((shipment) => (
-                    <TableRow key={shipment.id}>
-                      <TableCell className="font-medium">
-                        {shipment.id}
-                      </TableCell>
-                      <TableCell>{shipment.destination}</TableCell>
-                      <TableCell>{shipment.status}</TableCell>
-                      <TableCell className="text-right">
-                        {shipment.eta}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <h4 className="font-semibold mb-2 text-center">Active Shipments</h4>
+              <div className="text-center text-2xl font-bold text-blue-600">
+                {dashboardData?.shipmentsInTransit || 0} in transit
+              </div>
             </div>
           }
         />
@@ -564,7 +538,7 @@ export default function SuperAdminDashboard() {
             <CardTitle>Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <SalesChart data={dummySalesData} />
+            <SalesChart data={dashboardData?.salesData || dummySalesData} />
           </CardContent>
         </Card>
         <Card
@@ -575,15 +549,15 @@ export default function SuperAdminDashboard() {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentOrders orders={dummyOrders.slice(0, 5)} />
+            <RecentOrders orders={(realOrders?.slice(0, 5) || dummyOrders.slice(0, 5))} />
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <OrderStatusChart data={dummyOrderStatusData} />
+        <OrderStatusChart data={dashboardData?.orderStatusData || dummyOrderStatusData} />
         <FranchisePerformance />
-        <ServicePopularityChart data={dummyServicePopularityData} />
+        <ServicePopularityChart data={dashboardData?.servicePopularityData || dummyServicePopularityData} />
         <Card>
           <CardHeader>
             <CardTitle>Consolidated Payroll</CardTitle>
