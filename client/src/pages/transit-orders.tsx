@@ -96,7 +96,10 @@ export default function TransitOrdersPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any | null>(null);
-  const [preppingForReturn, setPreppingForReturn] = useState<string[]>([]);
+  const [preppingForReturn, setPreppingForReturn] = useState<string[]>(() => {
+    const saved = localStorage.getItem('preppingForReturn');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -106,6 +109,10 @@ export default function TransitOrdersPage() {
   useEffect(() => {
     localStorage.setItem('currentTransitBatch', JSON.stringify(currentBatch));
   }, [currentBatch]);
+
+  useEffect(() => {
+    localStorage.setItem('preppingForReturn', JSON.stringify(preppingForReturn));
+  }, [preppingForReturn]);
 
   // --- Data ---
   const { data: transitHistory = [], isLoading: isLoadingHistory } = useQuery({
@@ -159,6 +166,12 @@ export default function TransitOrdersPage() {
       toast({ title: 'Success', description: 'Transit batch created successfully.' });
       setCurrentBatch([]);
       localStorage.removeItem('currentTransitBatch');
+      
+      // Clear processing state for return batches after a short delay
+      setTimeout(() => {
+        setPreppingForReturn([]);
+        localStorage.removeItem('preppingForReturn');
+      }, 1000);
     },
   });
 
@@ -230,22 +243,44 @@ export default function TransitOrdersPage() {
 
       case 'COMPLETED':
         if (batch.type === 'STORE_TO_FACTORY') {
+          // Check if this batch is already being processed or has a return batch
+          const isBeingProcessed = preppingForReturn.includes(batch.id);
+          
+          // Simple check: if any orders from this batch are already in a FACTORY_TO_STORE batch
+          const hasReturnBatch = transitHistory.some((tb: any) => 
+            tb.type === 'FACTORY_TO_STORE' &&
+            tb.orders?.some((order: any) => 
+              batch.orders?.some((originalOrder: any) => originalOrder.id === order.id)
+            )
+          );
+
+          if (hasReturnBatch || isBeingProcessed) {
+            return (
+              <div className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-green-100 text-green-800">
+                <CheckCircle2 className="h-4 w-4" />
+                Done
+              </div>
+            );
+          }
+
           const arrivedOrders = allOrders.filter((o: any) => batch.orders.some((bo: any) => bo.id === o.id));
           return (
             <Button
               onClick={() => {
+                // Immediately mark as processed to prevent double-clicks
                 setPreppingForReturn((prev) => [...prev, batch.id]);
+                // Create the return batch
                 handleCreateBatch('FACTORY_TO_STORE', arrivedOrders);
               }}
-              disabled={preppingForReturn.includes(batch.id)}
+              disabled={isBeingProcessed}
               className={`${baseBtnStyle} ${
-                preppingForReturn.includes(batch.id)
-                  ? 'bg-purple-400 text-white opacity-70 cursor-not-allowed'
+                isBeingProcessed
+                  ? 'bg-gray-400 text-white opacity-70 cursor-not-allowed'
                   : 'bg-purple-600 hover:bg-purple-700 text-white'
               }`}
             >
               <ArrowLeftRight className="h-4 w-4" />
-              {preppingForReturn.includes(batch.id) ? 'Processing...' : 'Prep for Return'}
+              {isBeingProcessed ? 'Processing...' : 'Prep for Return'}
             </Button>
           );
         }
