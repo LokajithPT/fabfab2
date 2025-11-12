@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { PlusCircle, User, Truck, Download, Printer, Eye, X } from "lucide-react";
+import {
+  PlusCircle,
+  User,
+  Truck,
+  Download,
+  Printer,
+  Eye,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -286,7 +294,7 @@ export default function CreateOrder() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pickupDate">Pickup Date</Label>
+                <Label htmlFor="pickupDate">Delivery Date</Label>
                 <Input
                   id="pickupDate"
                   type="date"
@@ -373,13 +381,15 @@ export default function CreateOrder() {
                   <div className="text-center space-y-4">
                     <div className="relative inline-block">
                       <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <span className="text-white text-2xl font-bold">{itemBarcodes.length}</span>
+                        <span className="text-white text-2xl font-bold">
+                          {itemBarcodes.length}
+                        </span>
                       </div>
                       <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">✓</span>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-lg font-bold text-gray-900 mb-1">
                         {itemBarcodes.length} Items Ready
@@ -428,8 +438,12 @@ export default function CreateOrder() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">All Item Barcodes</h3>
-                        <p className="text-sm text-gray-600">Order #{createdOrderId}</p>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          All Item Barcodes
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Order #{createdOrderId}
+                        </p>
                       </div>
                       <Button
                         variant="outline"
@@ -461,7 +475,7 @@ export default function CreateOrder() {
                                 className="w-full h-full object-contain"
                               />
                             </div>
-                            
+
                             <div className="text-center">
                               <p className="text-xs font-medium text-gray-900 truncate">
                                 {item.service_name}
@@ -596,8 +610,9 @@ export default function CreateOrder() {
         </DialogContent>
       </Dialog>
 
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
           @media print {
             body * {
               visibility: hidden;
@@ -613,8 +628,9 @@ export default function CreateOrder() {
               width: 100%;
             }
           }
-        `
-      }} />
+        `,
+        }}
+      />
     </div>
   );
 }
