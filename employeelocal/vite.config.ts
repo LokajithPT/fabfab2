@@ -1,28 +1,30 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
- 
+import path from "path";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+// Centralized API URL - Change this to switch between local and remote
+const API_BASE_URL = "http://localhost:5001"; // For remote server, use: "http://117.218.59.207:5001"
 export default defineConfig({
   plugins: [react()],
   css: {
-    postcss: './postcss.config.js'
+    postcss: "./postcss.config.js",
   },
   server: {
     proxy: {
-      '/employee': {
-        target: 'http://117.218.59.207:5001/',
+      "/employee": {
+        target: API_BASE_URL + "/",
         changeOrigin: true,
       },
-      '/api': {
-        target: 'http://117.218.59.207:5001/',
+      "/api": {
+        target: API_BASE_URL + "/",
         changeOrigin: true,
       },
-      '/qr': {
-        target: 'http://117.218.59.207:5001/',
+      "/qr": {
+        target: API_BASE_URL + "/",
         changeOrigin: true,
       },
-      '/auth': {
-        target: 'http://117.218.59.207:5001/',
+      "/auth": {
+        target: API_BASE_URL + "/",
         changeOrigin: true,
       },
     },
@@ -33,4 +35,4 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "./src/shared"),
     },
   },
-})
+});

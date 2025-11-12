@@ -15,9 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-// --- Backend BASE URL ---
-const BASE_URL = 'http://117.218.59.207:5001';
+import { API_BASE_URL } from '../lib/config';
 
 // --- API Functions ---
 const apiFetch = async (url: string, options: RequestInit = {}) => {
@@ -29,16 +27,16 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
   return response.json();
 };
 
-const fetchTransitBatches = () => apiFetch(`${BASE_URL}/employee/api/transit-batches`);
-const fetchOrders = () => apiFetch(`${BASE_URL}/employee/api/orders`);
+const fetchTransitBatches = () => apiFetch(`${API_BASE_URL}/employee/api/transit-batches`);
+const fetchOrders = () => apiFetch(`${API_BASE_URL}/employee/api/orders`);
 const createTransitBatch = (batchData: any) =>
-  apiFetch(`${BASE_URL}/employee/api/transit-batches`, {
+  apiFetch(`${API_BASE_URL}/employee/api/transit-batches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(batchData),
   });
 const updateBatchStatus = (batchId: string, action: string) =>
-  apiFetch(`${BASE_URL}/employee/api/transit-batches/${batchId}/${action}`, { method: 'PUT' });
+  apiFetch(`${API_BASE_URL}/employee/api/transit-batches/${batchId}/${action}`, { method: 'PUT' });
 
 export default function TransitOrdersPage() {
   const { toast } = useToast();

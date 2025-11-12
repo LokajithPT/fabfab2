@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "../lib/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,10 +62,10 @@ export default function Tracking() {
   const [isCreateShipmentOpen, setIsCreateShipmentOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
-  const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["http://117.218.59.207:5001/api/orders"],
+const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
+    queryKey: [`${API_BASE_URL}/api/orders`],
     queryFn: async () => {
-      const res = await fetch("http://117.218.59.207:5001/api/orders?email=test@example.com");
+      const res = await fetch(`${API_BASE_URL}/api/orders?email=test@example.com`);
       if (!res.ok) throw new Error("Failed to fetch orders");
       return res.json();
     }

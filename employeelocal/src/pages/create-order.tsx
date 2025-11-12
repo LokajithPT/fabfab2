@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "../lib/config";
 
 type Service = {
   id: string;
@@ -53,7 +54,7 @@ export default function CreateOrder() {
 
   const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ["/api/services"],
-    queryFn: () => authFetch("http://117.218.59.207:5001/api/services"),
+    queryFn: () => authFetch(`${API_BASE_URL}/api/services`),
   });
 
   const handleServiceChange = (serviceId: string) => {
@@ -105,14 +106,14 @@ export default function CreateOrder() {
     };
 
     try {
-      const newOrder = await authFetch("http://117.218.59.207:5001/api/orders", {
+      const newOrder = await authFetch(`${API_BASE_URL}/api/orders`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       setCreatedOrderId(newOrder.order.id);
       // Set QR code URL from Render backend
-      setQrCodeUrl(`http://117.218.59.207:5001/qr/${newOrder.order.id}.png`);
+      setQrCodeUrl(`${API_BASE_URL}/qr/${newOrder.order.id}.png`);
       // Set individual item barcodes
       setItemBarcodes(newOrder.barcodes?.items || []);
       setIsModalOpen(true);

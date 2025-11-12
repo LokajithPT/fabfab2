@@ -48,6 +48,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { API_BASE_URL } from "../lib/config"
 
 export default function Services() {
   const queryClient = useQueryClient()
@@ -56,7 +57,7 @@ export default function Services() {
   const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ["/admin/api/services"],
     queryFn: async () => {
-      const res = await fetch("http://117.218.59.207:5001/api/services")
+      const res = await fetch(`${API_BASE_URL}/api/services`)
       if (!res.ok) throw new Error("Failed to fetch services")
       return res.json()
     }
@@ -64,7 +65,7 @@ export default function Services() {
 
   const createMutation = useMutation({
     mutationFn: async (newService: Partial<Service>) => {
-      const res = await fetch("http://117.218.59.207:5001/api/services", {
+      const res = await fetch(`${API_BASE_URL}/api/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newService),
@@ -76,8 +77,8 @@ export default function Services() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string, updates: Partial<Service> }) => {
-      const res = await fetch(`http://117.218.59.207:5001/api/services/${id}`, {
+mutationFn: async ({ id, updates }: { id: string, updates: Partial<Service> }) => {
+      const res = await fetch(`${API_BASE_URL}/api/services/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -89,8 +90,8 @@ export default function Services() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`http://117.218.59.207:5001/api/services/${id}`, { method: "DELETE" })
+mutationFn: async (id: string) => {
+      const res = await fetch(`${API_BASE_URL}/api/services/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to delete service")
       return id
     },

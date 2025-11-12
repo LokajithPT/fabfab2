@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../lib/config';
 
 const FabCleanLogin = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -7,7 +8,7 @@ const FabCleanLogin = ({ onLogin }) => {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://117.218.59.207:5001/employee/login', {
+      const response = await fetch(`${API_BASE_URL}/employee/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

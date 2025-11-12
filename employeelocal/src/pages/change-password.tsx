@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KeyRound } from 'lucide-react';
+import { API_BASE_URL } from '../lib/config';
 
 const ChangePassword = () => {
   const [newPassword, setNewPassword] = useState('');
@@ -21,7 +22,7 @@ const ChangePassword = () => {
 
   const handleChangePassword = async () => {
     try {
-      const response = await fetch('http://117.218.59.207:5001/employee/change-password', {
+      const response = await fetch(`${API_BASE_URL}/employee/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,9 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
 
+// Centralized API URL - Change this to switch between local and remote
+const API_BASE_URL = "http://117.218.59.207:5001"; // For local development, use: "http://localhost:5001"
+
 let mainWindow;
 
 function createWindow() {
