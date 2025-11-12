@@ -21,7 +21,7 @@ const ChangePassword = () => {
 
   const handleChangePassword = async () => {
     try {
-      const response = await fetch('http://localhost:5001/employee/change-password', {
+      const response = await fetch('http://117.218.59.207:5001/employee/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

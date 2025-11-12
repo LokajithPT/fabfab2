@@ -62,9 +62,9 @@ export default function Tracking() {
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["http://localhost:5001/api/orders"],
+    queryKey: ["http://117.218.59.207:5001/api/orders"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5001/api/orders?email=test@example.com");
+      const res = await fetch("http://117.218.59.207:5001/api/orders?email=test@example.com");
       if (!res.ok) throw new Error("Failed to fetch orders");
       return res.json();
     }

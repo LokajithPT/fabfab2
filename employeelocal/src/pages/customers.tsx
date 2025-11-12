@@ -373,7 +373,7 @@ export default function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5001/api/customers/public", { method: "GET" });
+      const res = await fetch("http://117.218.59.207:5001/api/customers/public", { method: "GET" });
       if (!res.ok) throw await res.json();
       const data = await res.json();
 
@@ -416,7 +416,7 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5001/admin/api/customers", {
+      const res = await fetch("http://117.218.59.207:5001/admin/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newCustomer),
@@ -462,7 +462,7 @@ export default function Customers() {
 
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5001/admin/api/customers/${updated.id}`, {
+      const res = await fetch(`http://117.218.59.207:5001/admin/api/customers/${updated.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),

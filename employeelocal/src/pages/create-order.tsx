@@ -53,7 +53,7 @@ export default function CreateOrder() {
 
   const { data: services, isLoading } = useQuery<Service[]>({
     queryKey: ["/api/services"],
-    queryFn: () => authFetch("http://localhost:5001/api/services"),
+    queryFn: () => authFetch("http://117.218.59.207:5001/api/services"),
   });
 
   const handleServiceChange = (serviceId: string) => {
@@ -105,14 +105,14 @@ export default function CreateOrder() {
     };
 
     try {
-      const newOrder = await authFetch("http://localhost:5001/api/orders", {
+      const newOrder = await authFetch("http://117.218.59.207:5001/api/orders", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       setCreatedOrderId(newOrder.order.id);
       // Set QR code URL from Render backend
-      setQrCodeUrl(`http://localhost:5001/qr/${newOrder.order.id}.png`);
+      setQrCodeUrl(`http://117.218.59.207:5001/qr/${newOrder.order.id}.png`);
       // Set individual item barcodes
       setItemBarcodes(newOrder.barcodes?.items || []);
       setIsModalOpen(true);

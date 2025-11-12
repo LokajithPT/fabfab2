@@ -140,7 +140,7 @@ export default function OrdersTable() {
   // Fetch services
   const fetchServices = async () => {
     try {
-      const data: Service[] = await adminFetch("http://localhost:5001/api/services");
+      const data: Service[] = await adminFetch("http://117.218.59.207:5001/api/services");
       setServices(data);
     } catch (err) {
       console.error("Failed to fetch services:", err);
@@ -156,7 +156,7 @@ export default function OrdersTable() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const data: Order[] = await adminFetch("http://localhost:5001/admin/api/orders");
+      const data: Order[] = await adminFetch("http://117.218.59.207:5001/admin/api/orders");
       setOrders(data);
       setFilteredOrders(data);
     } catch (err) {
@@ -456,7 +456,7 @@ export default function OrdersTable() {
     try {
       console.log("Calling barcode API...");
       // Call backend to generate barcodes for existing order
-      const response = await adminFetch(`http://localhost:5001/api/orders/${order.id}/barcodes`, {
+      const response = await adminFetch(`http://117.218.59.207:5001/api/orders/${order.id}/barcodes`, {
         method: "POST",
       });
       
@@ -470,7 +470,7 @@ export default function OrdersTable() {
           ...item,
           barcode_url: item.barcode_url.startsWith('http') 
             ? item.barcode_url 
-            : `http://localhost:5001${item.barcode_url}`
+            : `http://117.218.59.207:5001${item.barcode_url}`
         }));
         console.log("🔧 Fixed URLs:", fixedBarcodes.map((item: any) => item.barcode_url));
         setOrderItemBarcodes(fixedBarcodes);
@@ -482,7 +482,7 @@ export default function OrdersTable() {
           item_number: index + 1,
           total_items: serviceIds.length,
           service_name: order.service[index] || `Service ${index + 1}`,
-          barcode_url: `http://localhost:5001/qr/${order.id}_item_${index + 1}.png`,
+          barcode_url: `http://117.218.59.207:5001/qr/${order.id}_item_${index + 1}.png`,
           item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`,
           display_data: `Order ${order.id} • Item ${index + 1}/${serviceIds.length} • ${order.service[index] || `Service ${index + 1}`}`
         }));
@@ -497,7 +497,7 @@ export default function OrdersTable() {
         item_number: index + 1,
         total_items: serviceIds.length,
         service_name: order.service[index] || `Service ${index + 1}`,
-          barcode_url: `http://localhost:5001/qr/${order.id}_item_${index + 1}.png`,
+          barcode_url: `http://117.218.59.207:5001/qr/${order.id}_item_${index + 1}.png`,
         item_data: `ORDER:${order.id}|ITEM:${index + 1}/${serviceIds.length}|CUSTOMER:${order.customerName}|SERVICE:${order.service[index] || `Service ${index + 1}`}`,
         display_data: `Order ${order.id} • Item ${index + 1}/${serviceIds.length} • ${order.service[index] || `Service ${index + 1}`}`
       }));
@@ -539,7 +539,7 @@ export default function OrdersTable() {
         total: calculateTotal(),
       };
 
-      await adminFetch(`http://localhost:5001/admin/api/orders/${orderToEdit.id}`, {
+      await adminFetch(`http://117.218.59.207:5001/admin/api/orders/${orderToEdit.id}`, {
         method: "PUT",
         body: JSON.stringify(payload),
       });
@@ -940,7 +940,7 @@ export default function OrdersTable() {
                           onClick={handlePrintQR}
                         >
                           <img
-                            src={`http://localhost:5001/qr/${viewOrder.id}.png`}
+                            src={`http://117.218.59.207:5001/qr/${viewOrder.id}.png`}
                             alt={`Order ${viewOrder.id}`}
                             className="w-full h-full object-contain"
                             onError={(e) => {
@@ -1220,7 +1220,7 @@ export default function OrdersTable() {
                 <>
                   <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
                     <img
-                      src={`http://localhost:5001/qr/${viewOrder.id}.png`}
+                      src={`http://117.218.59.207:5001/qr/${viewOrder.id}.png`}
                       alt={`QR Code for Order ${viewOrder.id}`}
                       className="w-full h-full object-contain border border-gray-300"
                     />

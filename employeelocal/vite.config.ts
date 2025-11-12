@@ -10,19 +10,19 @@ export default defineConfig({
   server: {
     proxy: {
       '/employee': {
-        target: 'http://localhost:5001/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
       '/api': {
-        target: 'http://localhost:5001/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
       '/qr': {
-        target: 'http://localhost:5001/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
       '/auth': {
-        target: 'http://localhost:5001/',
+        target: 'http://117.218.59.207:5001/',
         changeOrigin: true,
       },
     },
