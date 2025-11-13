@@ -1,2 +1,2 @@
-export const API_BASE_URL = "http://localhost:5001"; // Change this to switch between local and remote
-// For remote server, use: "http://117.218.59.207:5001"
+export const API_BASE_URL = ""; // Use relative URL for proxy
+// For local development, use: "http://localhost:5001"

@@ -41,10 +41,22 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fabclean.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "super-secret-key-loki"
 app.config["JWT_SECRET_KEY"] = "super-jwt-secret-loki"
+# Fix session configuration for production
+app.config["SESSION_COOKIE_SECURE"] = False  # Set to True if using HTTPS
+# Fix session configuration for production
+app.config["SESSION_COOKIE_SECURE"] = False  # Set to True if using HTTPS
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)  # Session lasts 24 hours
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 CORS(app)
+
+# Fix session configuration for production
+app.config["SESSION_COOKIE_SECURE"] = False  # Set to True if using HTTPS
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # ---------------- HELPERS ---------------- #
 def admin_login_required(f):
     @wraps(f)
@@ -526,6 +538,8 @@ def admin_login():
             data = request.get_json()
             if data.get("username") == ADMIN_USER and data.get("password") == ADMIN_PASS:
                 session["admin_logged_in"] = True
+                session.permanent = True  # Make session permanent
+                print(f"Session after login: {session.get('admin_logged_in')}")  # Debug
                 return jsonify({"message": "Admin login successful"}), 200
             return jsonify({"error": "Invalid credentials"}), 401
         else:
@@ -533,6 +547,8 @@ def admin_login():
             password = request.form.get("password")
             if username == ADMIN_USER and password == ADMIN_PASS:
                 session["admin_logged_in"] = True
+                session.permanent = True  # Make session permanent
+                print(f"Session after form login: {session.get('admin_logged_in')}")  # Debug
                 return redirect(url_for("serve_admin"))
             return render_template("lokesh.html", error="Invalid credentials")
     return render_template("lokesh.html")
@@ -1070,11 +1086,21 @@ def ping():
 @app.route("/admin", defaults={"path": ""})
 @app.route("/admin/<path:path>")
 def serve_admin(path):
+    print(f"=== ADMIN ROUTE DEBUG ===")
+    print(f"Path: {path}")
+    print(f"Session: {session}")
+    print(f"Admin logged in: {session.get('admin_logged_in')}")
+    print(f"Static folder: {app.static_folder}")
+    
     if not session.get("admin_logged_in"):
+        print("Redirecting to login - not authenticated")
         return redirect(url_for("admin_login"))
     
     if path and os.path.exists(os.path.join(app.static_folder, path)):
+        print(f"Serving static file: {path}")
         return send_from_directory(app.static_folder, path)
+    
+    print("Serving index.html for React SPA")
     return send_from_directory(app.static_folder, "index.html")
 
 

@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { PlusCircle, User, Truck, Download, Printer, Eye, X } from "lucide-react";
+import {
+  PlusCircle,
+  User,
+  Truck,
+  Download,
+  Printer,
+  Eye,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,7 +53,9 @@ export default function CreateOrder() {
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
   const [extraCharges, setExtraCharges] = useState<number>(0);
   const [extraChargesNote, setExtraChargesNote] = useState<string>("");
-  const [discountType, setDiscountType] = useState<"percentage" | "amount" | "none">("none");
+  const [discountType, setDiscountType] = useState<
+    "percentage" | "amount" | "none"
+  >("none");
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [couponCode, setCouponCode] = useState<string>("");
   const [advancePayment, setAdvancePayment] = useState<number>(0);
@@ -62,7 +72,8 @@ export default function CreateOrder() {
   const filteredServices = services?.filter(
     (service) =>
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (service.category && service.category.toLowerCase().includes(searchTerm.toLowerCase()))
+      (service.category &&
+        service.category.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   const handleServiceChange = (serviceId: string) => {
@@ -93,7 +104,8 @@ export default function CreateOrder() {
     }
 
     // Get service names for comma-separated string
-    const serviceNames = selectedServiceDetails?.map((s) => s.name).join(", ") || "";
+    const serviceNames =
+      selectedServiceDetails?.map((s) => s.name).join(", ") || "";
 
     // Payload with both serviceIds array and service names as comma-separated string
     const payload = {
@@ -143,7 +155,7 @@ export default function CreateOrder() {
       });
     } catch (err: any) {
       // Removed error toast notification as per user request
-      return; 
+      return;
     }
   };
 
@@ -294,7 +306,8 @@ export default function CreateOrder() {
                         >
                           <div className="flex justify-between items-center">
                             <span>
-                              {service.name}{service.category ? ` / ${service.category}` : ''}
+                              {service.name}
+                              {service.category ? ` / ${service.category}` : ""}
                             </span>
                             <span className="text-green-600 font-semibold">
                               ₹{parseFloat(service.price).toFixed(2)}
@@ -313,7 +326,7 @@ export default function CreateOrder() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pickupDate">Pickup Date</Label>
+                <Label htmlFor="pickupDate">Delivery Date</Label>
                 <Input
                   id="pickupDate"
                   type="date"
@@ -359,85 +372,99 @@ export default function CreateOrder() {
                       </div>
                     ))}
                   </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm">Subtotal</span>
-                  <span className="text-sm font-medium">
-                    ₹{subtotalDisplay.toFixed(2)}
-                  </span>
-                </div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-sm">Subtotal</span>
+                      <span className="text-sm font-medium">
+                        ₹{subtotalDisplay.toFixed(2)}
+                      </span>
+                    </div>
 
-                {/* Extra Charges */}
-                <div className="space-y-2 mt-4">
-                  <Label htmlFor="extraCharges">Extra Charges</Label>
-                  <Input
-                    id="extraCharges"
-                    type="number"
-                    value={extraCharges}
-                    onChange={(e) => setExtraCharges(parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                  />
-                  <Input
-                    id="extraChargesNote"
-                    value={extraChargesNote}
-                    onChange={(e) => setExtraChargesNote(e.target.value)}
-                    placeholder="Reason for extra charges (optional)"
-                  />
-                </div>
+                    {/* Extra Charges */}
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="extraCharges">Extra Charges</Label>
+                      <Input
+                        id="extraCharges"
+                        type="number"
+                        value={extraCharges}
+                        onChange={(e) =>
+                          setExtraCharges(parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0.00"
+                      />
+                      <Input
+                        id="extraChargesNote"
+                        value={extraChargesNote}
+                        onChange={(e) => setExtraChargesNote(e.target.value)}
+                        placeholder="Reason for extra charges (optional)"
+                      />
+                    </div>
 
-                {/* Discount */}
-                <div className="space-y-2 mt-4">
-                  <Label htmlFor="discountType">Discount</Label>
-                  <select
-                    id="discountType"
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as "percentage" | "amount" | "none")}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="none">No Discount</option>
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="amount">Fixed Amount</option>
-                  </select>
-                  {discountType !== "none" && (
-                    <Input
-                      type="number"
-                      value={discountValue}
-                      onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                      placeholder={discountType === "percentage" ? "e.g., 10 for 10%" : "e.g., 50 for ₹50"}
-                    />
-                  )}
-                </div>
+                    {/* Discount */}
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="discountType">Discount</Label>
+                      <select
+                        id="discountType"
+                        value={discountType}
+                        onChange={(e) =>
+                          setDiscountType(
+                            e.target.value as "percentage" | "amount" | "none",
+                          )
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="none">No Discount</option>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="amount">Fixed Amount</option>
+                      </select>
+                      {discountType !== "none" && (
+                        <Input
+                          type="number"
+                          value={discountValue}
+                          onChange={(e) =>
+                            setDiscountValue(parseFloat(e.target.value) || 0)
+                          }
+                          placeholder={
+                            discountType === "percentage"
+                              ? "e.g., 10 for 10%"
+                              : "e.g., 50 for ₹50"
+                          }
+                        />
+                      )}
+                    </div>
 
-                {/* Coupon */}
-                <div className="space-y-2 mt-4">
-                  <Label htmlFor="couponCode">Coupon Code</Label>
-                  <Input
-                    id="couponCode"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Enter coupon code (optional)"
-                  />
-                </div>
+                    {/* Coupon */}
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="couponCode">Coupon Code</Label>
+                      <Input
+                        id="couponCode"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="Enter coupon code (optional)"
+                      />
+                    </div>
 
-                {/* Advance Payment */}
-                <div className="space-y-2 mt-4">
-                  <Label htmlFor="advancePayment">Advance Payment</Label>
-                  <Input
-                    id="advancePayment"
-                    type="number"
-                    value={advancePayment}
-                    onChange={(e) => setAdvancePayment(parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                  />
-                </div>
+                    {/* Advance Payment */}
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="advancePayment">Advance Payment</Label>
+                      <Input
+                        id="advancePayment"
+                        type="number"
+                        value={advancePayment}
+                        onChange={(e) =>
+                          setAdvancePayment(parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
 
-                <div className="flex justify-between items-center font-bold text-lg mt-4">
-                  <span>Total</span>
-                  <span className="text-green-600">
-                    ₹{finalTotalDisplay.toFixed(2)}
-                  </span>
-                </div>
-              </div>
+                    <div className="flex justify-between items-center font-bold text-lg mt-4">
+                      <span>Total</span>
+                      <span className="text-green-600">
+                        ₹{finalTotalDisplay.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -471,13 +498,15 @@ export default function CreateOrder() {
                   <div className="text-center space-y-4">
                     <div className="relative inline-block">
                       <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <span className="text-white text-2xl font-bold">{itemBarcodes.length}</span>
+                        <span className="text-white text-2xl font-bold">
+                          {itemBarcodes.length}
+                        </span>
                       </div>
                       <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">✓</span>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-lg font-bold text-gray-900 mb-1">
                         {itemBarcodes.length} Items Ready
@@ -526,8 +555,12 @@ export default function CreateOrder() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">All Item Barcodes</h3>
-                        <p className="text-sm text-gray-600">Order #{createdOrderId}</p>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          All Item Barcodes
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Order #{createdOrderId}
+                        </p>
                       </div>
                       <Button
                         variant="outline"
@@ -560,7 +593,7 @@ export default function CreateOrder() {
                                 className="w-full h-full object-contain"
                               />
                             </div>
-                            
+
                             <div className="text-center">
                               <p className="text-xs font-medium text-gray-900 truncate">
                                 {item.service_name}
@@ -588,7 +621,11 @@ export default function CreateOrder() {
                         <Download className="h-3 w-3 mr-1" />
                         Download All
                       </Button>
-                      <Button size="sm" onClick={handlePrintQR} className="text-xs">
+                      <Button
+                        size="sm"
+                        onClick={handlePrintQR}
+                        className="text-xs"
+                      >
                         <Printer className="h-3 w-3 mr-1" />
                         Print All
                       </Button>
@@ -648,7 +685,10 @@ export default function CreateOrder() {
               {itemBarcodes.length > 0 && (
                 <div className="space-y-4 print:space-y-6">
                   {itemBarcodes.map((item, index) => (
-                    <div key={index} className="flex items-center gap-4 border-b border-gray-200 pb-4 print:border-b print:border-gray-400 print:pb-6">
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 border-b border-gray-200 pb-4 print:border-b print:border-gray-400 print:pb-6"
+                    >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-bold text-lg print:text-xl">
@@ -658,9 +698,11 @@ export default function CreateOrder() {
                             {item.service_name}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 print:text-sm">Order: {createdOrderId}</p>
+                        <p className="text-xs text-gray-500 print:text-sm">
+                          Order: {createdOrderId}
+                        </p>
                       </div>
-                      
+
                       <div className="w-20 h-20 print:w-32 print:h-32">
                         <img
                           src={item.barcode_url}
@@ -676,10 +718,14 @@ export default function CreateOrder() {
               {/* Order Summary */}
               <div className="mt-6 print:mt-8 border-t-2 border-gray-300 pt-4 print:border-t-2 print:border-gray-400 print:pt-6">
                 <div className="text-center mb-4 print:mb-6">
-                  <h3 className="font-bold text-lg print:text-xl">Order Summary</h3>
-                  <p className="text-sm text-gray-600 print:text-base">FabClean Laundry</p>
+                  <h3 className="font-bold text-lg print:text-xl">
+                    Order Summary
+                  </h3>
+                  <p className="text-sm text-gray-600 print:text-base">
+                    FabClean Laundry
+                  </p>
                 </div>
-                
+
                 <div className="flex items-center gap-6 mb-4 print:mb-6">
                   <div className="flex-1 text-center">
                     {qrCodeUrl && (
@@ -691,21 +737,20 @@ export default function CreateOrder() {
                         />
                       </div>
                     )}
-                    <p className="text-xs text-gray-500 print:text-sm">Main Order QR</p>
+                    <p className="text-xs text-gray-500 print:text-sm">
+                      Main Order QR
+                    </p>
                   </div>
-                  
+
                   <div className="flex-1 space-y-1 print:space-y-2">
                     <p className="font-mono font-bold text-base print:text-lg">
                       #{createdOrderId}
                     </p>
-                    <p className="text-sm print:text-base">
-                      {customerName}
-                    </p>
-                    <p className="text-sm print:text-base">
-                      {customerPhone}
-                    </p>
+                    <p className="text-sm print:text-base">{customerName}</p>
+                    <p className="text-sm print:text-base">{customerPhone}</p>
                     <p className="font-semibold text-sm print:text-base">
-                      {itemBarcodes.length} items • ₹{finalTotalDisplay.toFixed(2)}
+                      {itemBarcodes.length} items • ₹
+                      {finalTotalDisplay.toFixed(2)}
                     </p>
                   </div>
                 </div>

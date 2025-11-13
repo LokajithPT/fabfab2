@@ -1,0 +1,7 @@
+cd eemployeelocal
+npm run build 
+mv dist bruh 
+rm -rf employeeserver/bruh 
+mv bruh employeeserver/
+cd employeeserver
+python app.py

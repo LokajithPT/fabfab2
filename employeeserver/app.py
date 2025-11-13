@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, render_template_string, request, jsonify, Response
+from flask import Flask, send_from_directory, render_template_string, request, jsonify, Response, redirect
 import os
 import requests
 
@@ -30,7 +30,7 @@ def proxy_auth(path):
     return proxy_request(f'/auth/{path}')
 
 def proxy_request(path):
-    backend_url = 'http://117.218.59.207:5001'
+    backend_url = 'http://127.0.0.1:5001'
     target_url = backend_url + path
     
     try:
@@ -49,9 +49,19 @@ def proxy_request(path):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/login')
+def serve_login():
+    return send_from_directory(os.path.dirname(__file__), 'login.html')
+
 @app.route('/')
 @app.route('/<path:path>')
 def serve_bruh(path=None):
+    # Check if user is authenticated
+    token = request.cookies.get('fab-employee-token') or request.headers.get('Authorization', '').replace('Bearer ', '')
+    
+    if not token and path != 'login':
+        return redirect('/login')
+    
     bruh_dir = os.path.join(os.path.dirname(__file__), 'bruh')
     
     if path and os.path.exists(os.path.join(bruh_dir, path)):
