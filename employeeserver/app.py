@@ -58,6 +58,11 @@ def proxy_request(path):
 def serve_login():
     return send_from_directory(os.path.dirname(__file__), 'login.html')
 
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    bruh_dir = os.path.join(os.path.dirname(__file__), 'bruh')
+    return send_from_directory(bruh_dir, f'assets/{filename}')
+
 @app.route('/')
 @app.route('/<path:path>')
 def serve_bruh(path=None):
@@ -73,8 +78,8 @@ def serve_bruh(path=None):
     if not token:
         token = request.cookies.get('fab-employee-token')
     
-    # Allow access to login page and static assets without auth
-    if not token and path not in [None, 'login', 'assets/index-BgwGS-hd.js', 'assets/index-DTI8hc3c.css']:
+    # Allow access to login page without auth
+    if not token and path not in [None, 'login']:
         return redirect('/login')
     
     bruh_dir = os.path.join(os.path.dirname(__file__), 'bruh')
