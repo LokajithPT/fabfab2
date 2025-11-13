@@ -57,9 +57,19 @@ def serve_login():
 @app.route('/<path:path>')
 def serve_bruh(path=None):
     # Check if user is authenticated
-    token = request.cookies.get('fab-employee-token') or request.headers.get('Authorization', '').replace('Bearer ', '')
+    auth_header = request.headers.get('Authorization', '')
+    token = None
     
-    if not token and path != 'login':
+    # Try to get token from Authorization header (Bearer token)
+    if auth_header.startswith('Bearer '):
+        token = auth_header.replace('Bearer ', '')
+    
+    # Also check localStorage via cookie (set by login page)
+    if not token:
+        token = request.cookies.get('fab-employee-token')
+    
+    # Allow access to login page and static assets without auth
+    if not token and path not in [None, 'login', 'assets/index-BgwGS-hd.js', 'assets/index-DTI8hc3c.css']:
         return redirect('/login')
     
     bruh_dir = os.path.join(os.path.dirname(__file__), 'bruh')

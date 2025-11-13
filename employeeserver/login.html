@@ -248,6 +248,9 @@
                     localStorage.setItem('fab-employee-token', data.token);
                     localStorage.setItem('fab-employee-worker', JSON.stringify(data.worker));
                     
+                    // Set token as cookie for server-side auth
+                    document.cookie = `fab-employee-token=${data.token}; path=/; max-age=86400`;
+                    
                     // Redirect to main app
                     window.location.href = '/';
                 } else {
