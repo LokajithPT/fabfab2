@@ -1,8 +1,13 @@
 from flask import Flask, send_from_directory, render_template_string, request, jsonify, Response, redirect
 import os
 import requests
+import mimetypes
 
 app = Flask(__name__)
+
+# Set proper MIME types
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
 
 # Proxy API requests to main Flask server
 @app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
