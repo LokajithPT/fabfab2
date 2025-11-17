@@ -1,4 +1,4 @@
-cd eemployeelocal
+cd employeelocal
 npm run build 
 mv dist bruh 
 rm -rf employeeserver/bruh 

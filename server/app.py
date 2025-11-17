@@ -2,6 +2,7 @@ import os
 import barcode
 from barcode.writer import ImageWriter
 import uuid
+import pandas as pd
 from datetime import datetime, timedelta
 from functools import wraps
 from flask_cors import CORS
@@ -189,6 +190,9 @@ class Customer(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20))
     password_hash = db.Column(db.String(256), nullable=False)
+    address = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(50), default="active")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, raw):
@@ -203,6 +207,9 @@ class Customer(db.Model):
             "name": self.name,
             "email": self.email,
             "phone": self.phone,
+            "address": self.address,
+            "notes": self.notes,
+            "status": self.status,
             "createdAt": self.created_at.isoformat(),
             "totalOrders": getattr(self, 'total_orders', 0),  # Will be populated by query
             "totalSpent": getattr(self, 'total_spent', 0.0),  # Will be populated by query
@@ -214,6 +221,7 @@ class Order(db.Model):
     customer_name = db.Column(db.String(100), nullable=False)
     customer_email = db.Column(db.String(120), nullable=False)
     customer_phone = db.Column(db.String(20), nullable=False)
+    customer_address = db.Column(db.Text)
     service_id = db.Column(db.String(20), db.ForeignKey("service.id"))
     service_name = db.Column(db.String(100))
     pickup_date = db.Column(db.String(50))
@@ -228,6 +236,7 @@ class Order(db.Model):
             "customerName": self.customer_name,
             "customerEmail": self.customer_email,
             "customerPhone": self.customer_phone,
+            "customerAddress": self.customer_address,
             "serviceId": self.service_id.split(",") if self.service_id else [],
             "service": self.service_name.split(",") if self.service_name else [],
             "pickupDate": self.pickup_date,
@@ -1036,6 +1045,92 @@ def delete_customer(customer_id):
     db.session.delete(customer)
     db.session.commit()
     return jsonify({"message": "Customer deleted"}), 200
+
+@app.route("/api/customers/import", methods=["POST"])
+def import_customers():
+    """Import customers from CSV or Excel file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Check file extension
+        if not (file.filename.endswith('.csv') or 
+                file.filename.endswith('.xlsx') or 
+                file.filename.endswith('.xls')):
+            return jsonify({"error": "Invalid file format. Please upload CSV or Excel file"}), 400
+        
+        # Read file based on extension
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        else:
+            df = pd.read_excel(file)
+        
+        # Validate required columns
+        required_columns = ['name', 'email', 'phone']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return jsonify({
+                "error": f"Missing required columns: {', '.join(missing_columns)}"
+            }), 400
+        
+        # Process each row
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for index, row in df.iterrows():
+            try:
+                # Skip rows with missing required data
+                if pd.isna(row['name']) or pd.isna(row['email']) or pd.isna(row['phone']):
+                    skipped_count += 1
+                    continue
+                
+                # Check if customer already exists
+                existing_customer = Customer.query.filter_by(email=row['email']).first()
+                if existing_customer:
+                    skipped_count += 1
+                    continue
+                
+                # Create new customer
+                customer = Customer(
+                    name=str(row['name']).strip(),
+                    email=str(row['email']).strip(),
+                    phone=str(row['phone']).strip()
+                )
+                customer.set_password("defaultpass")  # Set default password
+                
+                # Add optional fields if they exist
+                if 'address' in df.columns and not pd.isna(row['address']):
+                    customer.address = str(row['address']).strip()
+                if 'notes' in df.columns and not pd.isna(row['notes']):
+                    customer.notes = str(row['notes']).strip()
+                if 'status' in df.columns and not pd.isna(row['status']):
+                    customer.status = str(row['status']).strip()
+                
+                db.session.add(customer)
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Row {index + 2}: {str(e)}")
+                skipped_count += 1
+        
+        # Commit all changes
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"Import completed successfully",
+            "imported": imported_count,
+            "skipped": skipped_count,
+            "errors": errors
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Import failed: {str(e)}"}), 500
 
 
 @app.route("/admin/api/orders", methods=["GET"])

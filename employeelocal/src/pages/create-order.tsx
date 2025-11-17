@@ -3,9 +3,6 @@ import {
   PlusCircle,
   User,
   Truck,
-  Download,
-  Printer,
-  Eye,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,16 +43,15 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
 export default function CreateOrder() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [pickupDate, setPickupDate] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [itemBarcodes, setItemBarcodes] = useState<any[]>([]);
-  const [showDetailedView, setShowDetailedView] = useState(false);
+  const [editablePrices, setEditablePrices] = useState<Record<string, number>>({});
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -71,11 +67,43 @@ export default function CreateOrder() {
         ? prev.filter((id) => id !== serviceId)
         : [...prev, serviceId],
     );
+    // Initialize quantity if adding service
+    if (!selectedServices.includes(serviceId)) {
+      setQuantities(prev => ({ ...prev, [serviceId]: 1 }));
+    }
+  };
+
+  const handleQuantityChange = (serviceId: string, delta: number) => {
+    setQuantities(prev => {
+      const current = prev[serviceId] || 1;
+      const newQuantity = Math.max(1, current + delta);
+      return { ...prev, [serviceId]: newQuantity };
+    });
+  };
+
+  const handlePriceChange = (serviceId: string, newPrice: number) => {
+    setEditablePrices(prev => ({
+      ...prev,
+      [serviceId]: newPrice
+    }));
+  };
+
+  const handleRemoveService = (serviceId: string) => {
+    setSelectedServices(prev => prev.filter(id => id !== serviceId));
+    setEditablePrices(prev => {
+      const newPrices = { ...prev };
+      delete newPrices[serviceId];
+      return newPrices;
+    });
   };
 
   const selectedServiceDetails = services?.filter((s) =>
     selectedServices.includes(s.id),
-  );
+  ).map(service => ({
+    ...service,
+    currentPrice: editablePrices[service.id] || parseFloat(service.price),
+    quantity: quantities[service.id] || 1
+  }));
 
   const handleCreateOrder = async () => {
     if (
@@ -93,21 +121,31 @@ export default function CreateOrder() {
     }
 
     const total = selectedServiceDetails
-      ? selectedServiceDetails.reduce((acc, s) => acc + parseFloat(s.price), 0)
+      ? selectedServiceDetails.reduce((acc, s) => acc + s.currentPrice, 0)
       : 0;
 
-    // Get service names for comma-separated string
+    // Get service names and custom prices for comma-separated string
     const serviceNames = selectedServiceDetails?.map((s) => s.name) || [];
     const serviceNamesString = serviceNames.join(", ");
+    
+    // Create service details with custom prices
+    const serviceDetails = selectedServiceDetails?.map(s => ({
+      id: s.id,
+      name: s.name,
+      price: s.currentPrice,
+      originalPrice: parseFloat(s.price)
+    })) || [];
 
     // Payload with both serviceIds array and service names as comma-separated string
     const payload = {
       customerName,
       customerEmail,
       customerPhone,
+      customerAddress,
       serviceIds: selectedServices, // Keep as array for backend processing
       serviceId: selectedServices.join(","), // Comma-separated IDs if needed
       service: serviceNamesString, // Comma-separated service names
+      serviceDetails, // Include custom prices
       pickupDate,
       specialInstructions,
       total,
@@ -120,10 +158,6 @@ export default function CreateOrder() {
       });
 
       setCreatedOrderId(newOrder.order.id);
-      // Set QR code URL from Render backend
-      setQrCodeUrl(`${API_BASE_URL}/qr/${newOrder.order.id}.png`);
-      // Set individual item barcodes
-      setItemBarcodes(newOrder.barcodes?.items || []);
       setIsModalOpen(true);
 
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -132,9 +166,12 @@ export default function CreateOrder() {
       setCustomerName("");
       setCustomerEmail("");
       setCustomerPhone("");
+      setCustomerAddress("");
       setSelectedServices([]);
       setPickupDate("");
       setSpecialInstructions("");
+      setQuantities({});
+      setEditablePrices({});
 
       toast({
         title: "Success",
@@ -149,32 +186,8 @@ export default function CreateOrder() {
     }
   };
 
-  const handlePrintQR = () => {
-    setIsPrintModalOpen(true);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadQR = () => {
-    if (qrCodeUrl && createdOrderId) {
-      const link = document.createElement("a");
-      link.href = qrCodeUrl;
-      link.download = `order-${createdOrderId}-qr.png`;
-      link.click();
-    }
-  };
-
-  const handleDownloadItemBarcode = (item: any) => {
-    const link = document.createElement("a");
-    link.href = item.barcode_url;
-    link.download = `order-${createdOrderId}-item-${item.item_number}.png`;
-    link.click();
-  };
-
   const total = selectedServiceDetails
-    ? selectedServiceDetails.reduce((acc, s) => acc + parseFloat(s.price), 0)
+    ? selectedServiceDetails.reduce((acc, s) => acc + (s.currentPrice * s.quantity), 0)
     : 0;
 
   return (
@@ -235,6 +248,16 @@ export default function CreateOrder() {
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+91 98765 43210"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customerAddress">Address</Label>
+                <Textarea
+                  id="customerAddress"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  placeholder="Customer address..."
+                  rows={2}
                 />
               </div>
             </CardContent>
@@ -331,12 +354,58 @@ export default function CreateOrder() {
                     {selectedServiceDetails.map((service) => (
                       <div
                         key={service.id}
-                        className="flex justify-between items-center py-1"
+                        className="flex items-center justify-between py-2 p-2 border rounded-lg hover:bg-gray-50"
                       >
-                        <span className="text-sm">{service.name}</span>
-                        <span className="text-sm font-medium">
-                          ₹{parseFloat(service.price).toFixed(2)}
-                        </span>
+                        <div className="flex-1">
+                          <span className="text-sm font-medium">{service.name}</span>
+                          {service.currentPrice !== parseFloat(service.price) && (
+                            <div className="text-xs text-gray-500">
+                              Original: ₹{parseFloat(service.price).toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleQuantityChange(service.id, -1)}
+                            >
+                              -
+                            </Button>
+                            <span className="text-sm font-medium w-8 text-center">
+                              {service.quantity}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleQuantityChange(service.id, 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
+                          <span className="text-xs text-gray-600">₹</span>
+                          <Input
+                            type="number"
+                            value={service.currentPrice}
+                            onChange={(e) => handlePriceChange(service.id, parseFloat(e.target.value) || 0)}
+                            className="w-20 h-8 text-sm text-right"
+                            step="0.01"
+                            min="0"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveService(service.id)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -360,7 +429,7 @@ export default function CreateOrder() {
         </div>
       </div>
 
-      {/* Success Modal with QR Code */}
+      {/* Success Modal with Simple Client Info */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -373,144 +442,76 @@ export default function CreateOrder() {
               <PlusCircle className="h-8 w-8 text-green-600" />
             </div>
 
-            {/* Sexy Compact Barcode Display */}
-            {itemBarcodes.length > 0 && (
-              <div className="space-y-4">
-                {!showDetailedView ? (
-                  /* Compact Summary View */
-                  <div className="text-center space-y-4">
-                    <div className="relative inline-block">
-                      <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <span className="text-white text-2xl font-bold">
-                          {itemBarcodes.length}
-                        </span>
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">✓</span>
-                      </div>
-                    </div>
+            {/* Simple Client Info Display */}
+            <div className="space-y-4">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <PlusCircle className="h-8 w-8 text-green-600" />
+                </div>
 
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-1">
-                        {itemBarcodes.length} Items Ready
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Order #{createdOrderId} • Individual barcodes generated
-                      </p>
-                    </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    Order Created Successfully!
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Order #{createdOrderId}
+                  </p>
+                </div>
 
-                    {qrCodeUrl && (
-                      <div className="flex justify-center mb-4">
-                        <div
-                          className="w-24 h-24 border-2 border-gray-200 rounded-xl p-2 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white"
-                          onClick={handlePrintQR}
-                        >
-                          <img
-                            src={qrCodeUrl}
-                            alt={`Order ${createdOrderId}`}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
+                {/* Client Info Card */}
+                <div className="bg-gray-50 rounded-lg p-4 text-left">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium text-gray-600">Client:</span>
+                      <span className="text-sm font-bold">{customerName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium text-gray-600">Phone:</span>
+                      <span className="text-sm font-bold">{customerPhone}</span>
+                    </div>
+                    {customerAddress && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600">Address:</span>
+                        <span className="text-sm font-bold text-right max-w-[150px] truncate">{customerAddress}</span>
                       </div>
                     )}
-
-                    <div className="flex gap-3 justify-center">
-                      <Button
-                        onClick={() => setShowDetailedView(true)}
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg shadow-lg"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View All Barcodes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={handlePrintQR}
-                        className="px-6 py-2 rounded-lg"
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Print
-                      </Button>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium text-gray-600">Service:</span>
+                      <span className="text-sm font-bold">
+                        {selectedServiceDetails?.map((s) => 
+                          `${s.quantity}x ${s.name}`
+                        ).join(", ")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium text-gray-600">Total:</span>
+                      <span className="text-sm font-bold text-green-600">
+                        ₹{total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  /* Detailed Grid View */
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">
-                          All Item Barcodes
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Order #{createdOrderId}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowDetailedView(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                </div>
 
-                    {/* Sexy Grid Layout */}
-                    <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-2">
-                      {itemBarcodes.map((item, index) => (
-                        <div
-                          key={index}
-                          className="group relative bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-3 hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-                          onClick={() => handleDownloadItemBarcode(item)}
-                        >
-                          {/* Item Number Badge */}
-                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md">
-                            {item.item_number}
+                {/* Individual Service Slips */}
+                {selectedServiceDetails && selectedServiceDetails.length > 0 && (
+                  <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <p className="text-xs font-medium text-gray-500 mb-3 text-center">SERVICE SLIPS</p>
+                    <div className="space-y-2">
+                      {selectedServiceDetails.map((service, index) => (
+                        <div key={service.id} className="bg-gray-100 rounded p-2 text-center font-mono text-xs">
+                          <div className="font-bold">
+                            {customerName} {customerPhone}
                           </div>
-
-                          {/* Content */}
-                          <div className="space-y-2">
-                            <div className="w-16 h-16 mx-auto border-2 border-white rounded-lg p-1 bg-white shadow-sm">
-                              <img
-                                src={item.barcode_url}
-                                alt={`Item ${item.item_number}`}
-                                className="w-full h-full object-contain"
-                              />
-                            </div>
-
-                            <div className="text-center">
-                              <p className="text-xs font-medium text-gray-900 truncate">
-                                {item.service_name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {item.item_number}/{item.total_items}
-                              </p>
-                            </div>
+                          <div className="text-gray-700">
+                            {service.name} {index + 1}/{selectedServiceDetails.length}
                           </div>
-
-                          {/* Hover Overlay */}
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-xl transition-all" />
                         </div>
                       ))}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 justify-center pt-2 border-t border-gray-200">
-                      <Button
-                        variant="outline"
-                        onClick={handleDownloadQR}
-                        className="text-xs"
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download All
-                      </Button>
-                      <Button onClick={handlePrintQR} className="text-xs">
-                        <Printer className="h-3 w-3 mr-1" />
-                        Print All
-                      </Button>
                     </div>
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
             <div>
               <p className="text-muted-foreground mb-2">
@@ -537,100 +538,6 @@ export default function CreateOrder() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Print Modal */}
-      <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
-        <DialogContent className="max-w-lg print:shadow-none print:border-none">
-          <div className="print:block">
-            <DialogHeader className="print:hidden">
-              <DialogTitle className="text-center">
-                Print QR Code - Order #{createdOrderId}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="py-6 text-center space-y-4 print:py-8">
-              <div className="print:mb-6">
-                <h2 className="text-xl font-bold print:text-2xl">
-                  FabClean Laundry
-                </h2>
-                <p className="text-sm text-gray-600 print:text-base">
-                  Order Tracking QR Code
-                </p>
-              </div>
-
-              {qrCodeUrl && (
-                <div className="mx-auto w-64 h-64 print:w-80 print:h-80">
-                  <img
-                    src={qrCodeUrl}
-                    alt={`QR Code for Order ${createdOrderId}`}
-                    className="w-full h-full object-contain border border-gray-300"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2 print:space-y-3">
-                <p className="font-mono text-lg print:text-xl">
-                  Order #{createdOrderId}
-                </p>
-                <p className="text-sm print:text-base">
-                  Customer: {customerName}
-                </p>
-                <p className="text-sm print:text-base">
-                  Phone: {customerPhone}
-                </p>
-                {pickupDate && (
-                  <p className="text-sm print:text-base">
-                    Pickup: {new Date(pickupDate).toLocaleDateString()}
-                  </p>
-                )}
-                <p className="text-sm print:text-base font-semibold">
-                  Total: ₹{total.toFixed(2)}
-                </p>
-              </div>
-
-              <div className="text-xs text-gray-500 print:text-sm print:mt-8">
-                <p>Scan this QR code to track your order</p>
-                <p>Keep this receipt safe</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-center mt-6 print:hidden">
-              <Button onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Print Now
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsPrintModalOpen(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .print\\:block,
-            .print\\:block * {
-              visibility: visible;
-            }
-            .print\\:block {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-          }
-        `,
-        }}
-      />
     </div>
   );
 }

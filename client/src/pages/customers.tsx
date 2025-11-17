@@ -568,6 +568,38 @@ export default function Customers() {
     toast({ title: "Success", description: "Customer data refreshed" });
   };
 
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setLoading(true);
+      const response = await authFetch('/api/customers/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      toast({
+        title: "Import Successful",
+        description: `Customers imported successfully`,
+      });
+      await fetchCustomers(); // Refresh the customer list
+    } catch (error: any) {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import customers",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -625,6 +657,17 @@ export default function Customers() {
             <UserPlus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
+          <Button onClick={() => document.getElementById('csv-import')?.click()} variant="outline" size="sm">
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <input
+            id="csv-import"
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={handleFileImport}
+          />
         </div>
       </div>
 
@@ -805,6 +848,12 @@ export default function Customers() {
                             <Phone className="h-3 w-3 mr-2 text-gray-400" />
                             {customer.phone}
                           </div>
+                          {customer.address && (
+                            <div className="flex items-start text-sm text-gray-600">
+                              <MapPin className="h-3 w-3 mr-2 text-gray-400 mt-0.5" />
+                              <span className="line-clamp-1">{customer.address}</span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

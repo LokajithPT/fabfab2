@@ -2,12 +2,9 @@ import { Link, useLocation } from "wouter";
 import {
   Home,
   ShoppingCart,
-  Users2,
-  LineChart,
   Package,
   Settings,
   Truck,
-  Scissors,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,12 +52,6 @@ export function Sidebar() {
         </NavLink>
         <NavLink to="/orders" icon={ShoppingCart}>
           Orders
-        </NavLink>
-        <NavLink to="/customers" icon={Users2}>
-          Customers
-        </NavLink>
-        <NavLink to="/services" icon={Scissors}>
-          Services
         </NavLink>
         <NavLink to="/inventory" icon={Package}>
           Inventory
