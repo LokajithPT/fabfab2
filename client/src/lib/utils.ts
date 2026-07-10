@@ -4,8 +4,20 @@ export const fetchUsers = async () => {
 };
 
 // utils.ts
-export function cn(...classes: (string | undefined | false | null)[]) {
-  return classes.filter(Boolean).join(" ");
+type ClassValue = string | undefined | false | null | Record<string, boolean | undefined | null>;
+
+export function cn(...classes: ClassValue[]) {
+  return classes
+    .flatMap((c) => {
+      if (typeof c === "object" && c !== null) {
+        return Object.entries(c)
+          .filter(([, v]) => v)
+          .map(([k]) => k);
+      }
+      return c || undefined;
+    })
+    .filter(Boolean)
+    .join(" ");
 }
 
 

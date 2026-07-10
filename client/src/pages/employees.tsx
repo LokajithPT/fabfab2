@@ -14,7 +14,7 @@ const fetchEmployees = async () => {
   return response.json();
 };
 
-const createEmployee = async (employeeData) => {
+const createEmployee = async (employeeData: Record<string, unknown>) => {
   const response = await fetch('/admin/api/workers', {
     method: 'POST',
     headers: {
@@ -28,7 +28,7 @@ const createEmployee = async (employeeData) => {
   return response.json();
 };
 
-const updateEmployee = async (employeeData) => {
+const updateEmployee = async (employeeData: Record<string, unknown>) => {
   const response = await fetch(`/admin/api/workers/${employeeData.id}`,
     {
       method: 'PUT',
@@ -44,7 +44,7 @@ const updateEmployee = async (employeeData) => {
   return response.json();
 };
 
-const deleteEmployee = async (employeeId) => {
+const deleteEmployee = async (employeeId: string) => {
   const response = await fetch(`/admin/api/workers/${employeeId}`, {
     method: 'DELETE',
   });
@@ -58,29 +58,29 @@ const Employees = () => {
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
 
   const { data: employees, isLoading, isError } = useQuery({ queryKey: ['employees'], queryFn: fetchEmployees });
 
-  const createMutation = useMutation({ mutationFn: createEmployee, onSuccess: () => { queryClient.invalidateQueries(['employees']); setIsCreateDialogOpen(false); } });
-  const updateMutation = useMutation({ mutationFn: updateEmployee, onSuccess: () => { queryClient.invalidateQueries(['employees']); setIsEditDialogOpen(false); } });
-  const deleteMutation = useMutation({ mutationFn: deleteEmployee, onSuccess: () => { queryClient.invalidateQueries(['employees']); } });
+  const createMutation = useMutation({ mutationFn: createEmployee, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); setIsCreateDialogOpen(false); } });
+  const updateMutation = useMutation({ mutationFn: updateEmployee, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); setIsEditDialogOpen(false); } });
+  const deleteMutation = useMutation({ mutationFn: deleteEmployee, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); } });
 
-  const handleCreate = (e) => {
+  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     createMutation.mutate(data);
   };
 
-  const handleUpdate = (e) => {
+  const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    updateMutation.mutate({ ...selectedEmployee, ...data });
+    updateMutation.mutate({ ...(selectedEmployee ?? {}), ...data });
   };
 
-  const handleDelete = (employeeId) => {
+  const handleDelete = (employeeId: string) => {
     if (window.confirm('Are you sure you want to delete this employee?')) {
       deleteMutation.mutate(employeeId);
     }
@@ -122,7 +122,7 @@ const Employees = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {employees.map((employee) => (
+          {(employees as any[] || []).map((employee: any) => (
             <TableRow key={employee.id}>
               <TableCell>{employee.name}</TableCell>
               <TableCell>{employee.email}</TableCell>

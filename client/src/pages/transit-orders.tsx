@@ -128,7 +128,7 @@ export default function TransitOrdersPage() {
   const availableOrders = useMemo(() => {
     if (isLoadingOrders) return [];
     const ids = new Set(currentBatch.map((o) => o.id));
-    return allOrders.filter((o) => o.status === 'At Store' && !ids.has(o.id));
+    return allOrders.filter((o: any) => o.status === 'At Store' && !ids.has(o.id));
   }, [allOrders, currentBatch, isLoadingOrders]);
 
   const filteredHistory = useMemo(
@@ -161,8 +161,8 @@ export default function TransitOrdersPage() {
   const createBatchMutation = useMutation({
     ...mutationOptions,
     mutationFn: createTransitBatch,
-    onSuccess: (...args) => {
-      mutationOptions.onSuccess(...args);
+    onSuccess: () => {
+      mutationOptions.onSuccess();
       toast({ title: 'Success', description: 'Transit batch created successfully.' });
       setCurrentBatch([]);
       localStorage.removeItem('currentTransitBatch');
@@ -179,8 +179,8 @@ export default function TransitOrdersPage() {
     ...mutationOptions,
     mutationFn: ({ batchId, action }: { batchId: string; action: string }) =>
       updateBatchStatus(batchId, action),
-    onSuccess: (...args) => {
-      mutationOptions.onSuccess(...args);
+    onSuccess: () => {
+      mutationOptions.onSuccess();
       toast({ title: 'Success', description: 'Batch status updated.' });
     },
   });

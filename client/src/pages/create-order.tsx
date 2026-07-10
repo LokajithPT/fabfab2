@@ -137,7 +137,7 @@ export default function CreateOrder() {
     selectedServices.includes(s.id),
   ).map(service => {
     const quantity = serviceQuantities[service.id] || 1;
-    const unitPrice = editablePrices[service.id] || parseFloat(service.price);
+    const unitPrice = editablePrices[service.id] || service.price;
     return {
       ...service,
       currentPrice: unitPrice,
@@ -172,7 +172,7 @@ export default function CreateOrder() {
       price: s.currentPrice,
       quantity: s.quantity || 1,
       totalPrice: s.totalPrice || s.currentPrice,
-      originalPrice: parseFloat(s.price)
+      originalPrice: s.price
     })) || [];
 
     // Payload with both serviceIds array and service names as comma-separated string
@@ -365,7 +365,7 @@ export default function CreateOrder() {
                               {service.category ? ` / ${service.category}` : ""}
                             </span>
                             <span className="text-green-600 font-semibold">
-                              ₹{parseFloat(service.price).toFixed(2)}
+                              ₹{service.price.toFixed(2)}
                             </span>
                           </div>
                         </label>
@@ -427,9 +427,9 @@ export default function CreateOrder() {
                                ×{service.quantity || 1}
                              </span>
                            </div>
-                           {service.currentPrice !== parseFloat(service.price) && (
+                           {service.currentPrice !== service.price && (
                              <div className="text-xs text-gray-500">
-                               Original: ₹{parseFloat(service.price).toFixed(2)} each
+                               Original: ₹{service.price.toFixed(2)} each
                              </div>
                            )}
                          </div>
@@ -810,9 +810,9 @@ export default function CreateOrder() {
                         <td className="py-2 text-center font-medium">{service.quantity || 1}</td>
                         <td className="text-right py-2 font-medium">
                           ₹{service.currentPrice.toFixed(2)}
-                          {service.currentPrice !== parseFloat(service.price) && (
+                          {service.currentPrice !== service.price && (
                             <div className="text-xs text-gray-500 line-through">
-                              ₹{parseFloat(service.price).toFixed(2)}
+                              ₹{service.price.toFixed(2)}
                             </div>
                           )}
                         </td>

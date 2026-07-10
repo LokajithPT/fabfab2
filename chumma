@@ -1,8 +1,0 @@
-cd client 
-npm run build 
-cd .. 
-mv dist reactshit 
-rm -rf server/reactshit
-mv reactshit server/
-cd server 
-python app.py 

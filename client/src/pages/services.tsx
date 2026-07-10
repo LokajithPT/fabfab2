@@ -105,7 +105,7 @@ export default function Services() {
     if (!newService.name || !newService.price) return
     createMutation.mutate({
       name: newService.name,
-      price: newService.price,
+      price: parseFloat(newService.price) || 0,
       duration: newService.duration,
       category: newService.category,
       status: "Active",
@@ -197,7 +197,7 @@ export default function Services() {
                 services?.map((service) => (
                   <TableRow key={service.id}>
                     <TableCell>{service.name}</TableCell>
-                    <TableCell>₹{parseFloat(service.price).toFixed(2)}</TableCell>
+                    <TableCell>₹{service.price.toFixed(2)}</TableCell>
                     <TableCell>{service.duration}</TableCell>
                     <TableCell>{service.category}</TableCell>
                     <TableCell>
@@ -269,7 +269,7 @@ export default function Services() {
               </div>
               <div>
                 <Label htmlFor="servicePrice">Price</Label>
-                <Input id="servicePrice" type="number" value={selectedService.price} onChange={(e) => setSelectedService({ ...selectedService, price: e.target.value })} />
+                    <Input id="servicePrice" type="number" value={selectedService.price} onChange={(e) => setSelectedService({ ...selectedService, price: parseFloat(e.target.value) || 0 })} />
               </div>
               <div>
                 <Label htmlFor="serviceDuration">Duration</Label>
